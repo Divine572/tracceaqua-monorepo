@@ -1,0 +1,331 @@
+@import "tailwindcss";
+
+/* Tailwind v4 Configuration */
+@theme {
+  /* Container Configuration */
+  --container-center: true;
+  --container-padding: 2rem;
+  --container-screens-2xl: 1400px;
+
+  /* TracceAqua Color System */
+  --color-background: oklch(100% 0 0);
+  --color-foreground: oklch(15% 0.006 285.8);
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(15% 0.006 285.8);
+  --color-popover: oklch(100% 0 0);
+  --color-popover-foreground: oklch(15% 0.006 285.8);
+
+  /* TracceAqua Primary Colors - Blue Theme */
+  --color-primary: oklch(60% 0.15 245); /* TracceAqua Blue #3b82f6 */
+  --color-primary-foreground: oklch(98% 0 0);
+
+  /* Secondary - Cyan Accent */
+  --color-secondary: oklch(68% 0.14 188); /* Cyan #22d3ee */
+  --color-secondary-foreground: oklch(15% 0.006 285.8);
+
+  /* Accent - Teal */
+  --color-accent: oklch(66% 0.12 172); /* Teal #14b8a6 */
+  --color-accent-foreground: oklch(98% 0 0);
+
+  /* Slate Base Colors (chosen in shadcn/ui setup) */
+  --color-muted: oklch(96% 0.006 255);
+  --color-muted-foreground: oklch(47% 0.006 255);
+  --color-border: oklch(90% 0.006 255);
+  --color-input: oklch(90% 0.006 255);
+  --color-ring: oklch(60% 0.15 245); /* Same as primary */
+
+  /* Destructive */
+  --color-destructive: oklch(60% 0.15 0);
+  --color-destructive-foreground: oklch(98% 0 0);
+
+  /* Border Radius */
+  --radius: 0.75rem;
+  --radius-lg: 0.75rem;
+  --radius-md: calc(0.75rem - 2px);
+  --radius-sm: calc(0.75rem - 4px);
+
+  /* TracceAqua Custom Colors */
+  --color-tracceaqua-blue: oklch(60% 0.15 245);
+  --color-tracceaqua-cyan: oklch(68% 0.14 188);
+  --color-tracceaqua-teal: oklch(66% 0.12 172);
+  --color-tracceaqua-dark-blue: oklch(38% 0.15 245);
+
+  /* Blue Scale for TracceAqua */
+  --color-blue-50: oklch(97% 0.01 245);
+  --color-blue-100: oklch(92% 0.05 245);
+  --color-blue-200: oklch(84% 0.08 245);
+  --color-blue-300: oklch(73% 0.12 245);
+  --color-blue-400: oklch(63% 0.15 245);
+  --color-blue-500: oklch(60% 0.15 245); /* Primary */
+  --color-blue-600: oklch(52% 0.15 245);
+  --color-blue-700: oklch(43% 0.15 245);
+  --color-blue-800: oklch(35% 0.15 245);
+  --color-blue-900: oklch(27% 0.12 245);
+
+  /* Cyan Scale */
+  --color-cyan-50: oklch(97% 0.01 188);
+  --color-cyan-100: oklch(92% 0.04 188);
+  --color-cyan-200: oklch(84% 0.08 188);
+  --color-cyan-300: oklch(75% 0.12 188);
+  --color-cyan-400: oklch(68% 0.14 188); /* Secondary */
+  --color-cyan-500: oklch(60% 0.14 188);
+  --color-cyan-600: oklch(52% 0.14 188);
+  --color-cyan-700: oklch(44% 0.12 188);
+  --color-cyan-800: oklch(36% 0.10 188);
+  --color-cyan-900: oklch(28% 0.08 188);
+
+  /* Teal Scale */
+  --color-teal-50: oklch(97% 0.01 172);
+  --color-teal-100: oklch(92% 0.04 172);
+  --color-teal-200: oklch(84% 0.08 172);
+  --color-teal-300: oklch(75% 0.12 172);
+  --color-teal-400: oklch(68% 0.14 172);
+  --color-teal-500: oklch(66% 0.12 172); /* Accent */
+  --color-teal-600: oklch(58% 0.12 172);
+  --color-teal-700: oklch(50% 0.10 172);
+  --color-teal-800: oklch(42% 0.08 172);
+  --color-teal-900: oklch(34% 0.06 172);
+
+  /* TracceAqua Animations */
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-shimmer: shimmer 3s ease-in-out infinite;
+  --animate-glow: glow 2s ease-in-out infinite;
+  --animate-heartbeat: heartbeat 2s ease-in-out infinite;
+  --animate-scan: scan 2s linear infinite;
+}
+
+/* Dark Mode Color Overrides */
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-background: oklch(6% 0.015 245); /* Very dark blue */
+    --color-foreground: oklch(98% 0 0);
+    --color-card: oklch(8% 0.015 245);
+    --color-card-foreground: oklch(98% 0 0);
+    --color-popover: oklch(8% 0.015 245);
+    --color-popover-foreground: oklch(98% 0 0);
+
+    --color-muted: oklch(15% 0.015 245);
+    --color-muted-foreground: oklch(65% 0.006 255);
+    --color-border: oklch(20% 0.015 245);
+    --color-input: oklch(20% 0.015 245);
+  }
+}
+
+/* Base Styles */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* TracceAqua Custom Utility Classes */
+@layer utilities {
+  /* Gradient Utilities */
+  .gradient-blue-primary {
+    background: linear-gradient(135deg, oklch(60% 0.15 245), oklch(38% 0.15 245));
+  }
+  
+  .gradient-cyan-blue {
+    background: linear-gradient(135deg, oklch(68% 0.14 188), oklch(60% 0.15 245));
+  }
+  
+  .gradient-teal-cyan {
+    background: linear-gradient(135deg, oklch(66% 0.12 172), oklch(68% 0.14 188));
+  }
+  
+  .gradient-emerald-teal {
+    background: linear-gradient(135deg, oklch(66% 0.15 160), oklch(66% 0.12 172));
+  }
+
+  /* Onboarding Screen Gradients */
+  .gradient-screen-1 {
+    background: linear-gradient(135deg, oklch(52% 0.15 245), oklch(35% 0.15 245));
+  }
+  
+  .gradient-screen-2 {
+    background: linear-gradient(135deg, oklch(60% 0.14 188), oklch(52% 0.15 245));
+  }
+  
+  .gradient-screen-3 {
+    background: linear-gradient(135deg, oklch(58% 0.12 172), oklch(60% 0.14 188));
+  }
+  
+  .gradient-screen-4 {
+    background: linear-gradient(135deg, oklch(66% 0.15 160), oklch(58% 0.12 172));
+  }
+
+  /* Animation Utilities */
+  .animate-float {
+    animation: var(--animate-float);
+  }
+  
+  .animate-shimmer {
+    animation: var(--animate-shimmer);
+    background: linear-gradient(90deg, transparent, oklch(100% 0 0 / 0.2), transparent);
+    background-size: 200px 100%;
+  }
+  
+  .animate-glow {
+    animation: var(--animate-glow);
+  }
+  
+  .animate-heartbeat {
+    animation: var(--animate-heartbeat);
+  }
+  
+  .animate-scan {
+    animation: var(--animate-scan);
+  }
+
+  /* Animation Delays */
+  .animation-delay-200 {
+    animation-delay: 0.2s;
+  }
+  
+  .animation-delay-500 {
+    animation-delay: 0.5s;
+  }
+  
+  .animation-delay-1000 {
+    animation-delay: 1s;
+  }
+
+  /* Scale Utilities */
+  .hover\:scale-102:hover {
+    transform: scale(1.02);
+  }
+  
+  .active\:scale-95:active {
+    transform: scale(0.95);
+  }
+  
+  .active\:scale-98:active {
+    transform: scale(0.98);
+  }
+}
+
+/* TracceAqua Custom Animations */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+  }
+  33% { 
+    transform: translateY(-15px) rotate(1deg); 
+  }
+  66% { 
+    transform: translateY(-5px) rotate(-1deg); 
+  }
+}
+
+@keyframes shimmer {
+  0% { 
+    background-position: -200px 0; 
+  }
+  100% { 
+    background-position: calc(200px + 100%) 0; 
+  }
+}
+
+@keyframes glow {
+  0%, 100% { 
+    box-shadow: 
+      0 0 20px oklch(60% 0.15 245 / 0.3),
+      0 0 40px oklch(60% 0.15 245 / 0.1);
+  }
+  50% { 
+    box-shadow: 
+      0 0 30px oklch(60% 0.15 245 / 0.5),
+      0 0 60px oklch(60% 0.15 245 / 0.2);
+  }
+}
+
+@keyframes heartbeat {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  25% { 
+    transform: scale(1.1); 
+  }
+  50% { 
+    transform: scale(1); 
+  }
+  75% { 
+    transform: scale(1.05); 
+  }
+}
+
+@keyframes scan {
+  0% { 
+    top: 0; 
+  }
+  100% { 
+    top: 100%; 
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+  }
+  to { 
+    opacity: 1; 
+  }
+}
+
+/* Additional Animation Classes */
+.animate-fadeInUp {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-fadeInScale {
+  animation: fadeInScale 0.8s ease-out forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 1s ease-out forwards;
+}
+
+/* Custom scrollbar for TracceAqua */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(90% 0.006 255);
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(60% 0.15 245);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(52% 0.15 245);
+}
