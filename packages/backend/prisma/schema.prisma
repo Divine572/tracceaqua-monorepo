@@ -1,0 +1,164 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== USER MANAGEMENT MODELS =====
+
+model User {
+  id          String      @id @default(cuid())
+  address     String      @unique  // Wallet address
+  email       String?     @unique  // From social login
+  role        UserRole    @default(CONSUMER)
+  status      UserStatus  @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  profile              UserProfile?
+  roleApplications     RoleApplication[]
+  adminActionsPerformed AdminAction[] @relation("AdminUser")
+  adminActionsReceived  AdminAction[] @relation("TargetUser")
+  reviewedApplications RoleApplication[] @relation("AdminReviewer")
+  
+  // Future Phase Relations (will be added later)
+  conservationRecords  ConservationRecord[]
+  supplyChainRecords   SupplyChainRecord[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  firstName       String?
+  lastName        String?
+  organization    String?
+  licenseNumber   String?
+  phoneNumber     String?
+  profileImage    String?  // IPFS hash
+  bio             String?
+  location        String?
+  website         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model RoleApplication {
+  id              String            @id @default(cuid())
+  userId          String
+  requestedRole   UserRole
+  status          ApplicationStatus @default(PENDING)
+  
+  // Application Details
+  organization    String?
+  licenseNumber   String?
+  businessType    String?
+  experience      String?           // Years of experience
+  motivation      String?           // Why they want this role
+  
+  // Documents (IPFS hashes)
+  documents       String[]          // Array of IPFS hashes
+  
+  // Admin Review
+  reviewedBy      String?           // Admin user ID
+  adminFeedback   String?
+  reviewedAt      DateTime?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("AdminReviewer", fields: [reviewedBy], references: [id])
+
+  @@map("role_applications")
+}
+
+model AdminAction {
+  id          String   @id @default(cuid())
+  adminId     String   // Who performed the action
+  targetId    String   // Who/what was affected
+  action      String   // Action type (APPROVE_ROLE, REJECT_APPLICATION, etc.)
+  description String?  // Detailed description
+  metadata    Json?    // Additional action data
+  createdAt   DateTime @default(now())
+
+  // Relations
+  admin  User @relation("AdminUser", fields: [adminId], references: [id])
+  target User @relation("TargetUser", fields: [targetId], references: [id])
+
+  @@map("admin_actions")
+}
+
+// ===== PLACEHOLDER MODELS FOR FUTURE PHASES =====
+// These will be expanded in later phases
+
+model ConservationRecord {
+  id                String   @id @default(cuid())
+  samplingId        String   @unique
+  userId            String
+  status            String   @default("DRAFT")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("conservation_records")
+}
+
+model SupplyChainRecord {
+  id        String   @id @default(cuid())
+  productId String   @unique
+  userId    String
+  status    String   @default("DRAFT")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("supply_chain_records")
+}
+
+// ===== ENUMS =====
+
+enum UserRole {
+  ADMIN
+  RESEARCHER
+  FARMER
+  FISHERMAN
+  PROCESSOR
+  TRADER
+  RETAILER
+  CONSUMER
+  PENDING_UPGRADE
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+  REJECTED
+}
+
+enum ApplicationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  RESUBMITTED
+}
