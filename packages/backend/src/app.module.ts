@@ -1,4 +1,3 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -8,12 +7,13 @@ import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { RoleApplicationsModule } from './role-applications/role-applications.module';
-import { AdminModule } from './admin/admin.module';
-import { UploadModule } from './upload/upload.module';
+// These will be added in later stages
+// import { RoleApplicationsModule } from './role-applications/role-applications.module';
+// import { AdminModule } from './admin/admin.module';
+// import { UploadModule } from './upload/upload.module';
 
 // Guards and interceptors
-// import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -27,7 +27,6 @@ import { uploadConfig } from './config/upload.config';
 // Main app components
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-
 
 @Module({
   imports: [
@@ -61,19 +60,20 @@ import { AppService } from './app.service';
     PrismaModule,
     AuthModule,
     UsersModule,
-    RoleApplicationsModule,
-    AdminModule,
-    UploadModule,
+    // These will be added in later stages
+    // RoleApplicationsModule,
+    // AdminModule,
+    // UploadModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
 
     // Global guards
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: JwtAuthGuard,
-    // },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
 
     // Global exception filter
     {
