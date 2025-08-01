@@ -35,11 +35,11 @@ export class UserProfileDto {
   @ApiProperty({ required: false })
   profileImage?: string;
 
-  @ApiProperty()
-  createdAt: Date;
+  @ApiProperty({ default: Date.now() })
+  createdAt?: Date;
 
-  @ApiProperty()
-  updatedAt: Date;
+  @ApiProperty({ default: Date.now() })
+  updatedAt?: Date;
 }
 
 export class UserDto {
@@ -50,13 +50,13 @@ export class UserDto {
   address: string;
 
   @ApiProperty({ required: false })
-  email?: string;
+  email: string;
 
   @ApiProperty({ enum: UserRole })
-  role: UserRole;
+  role: string;
 
   @ApiProperty({ enum: UserStatus })
-  status: UserStatus;
+  status: string;
 
   @ApiProperty({ type: UserProfileDto, required: false })
   profile?: UserProfileDto;
@@ -65,10 +65,10 @@ export class UserDto {
   isNewUser?: boolean;
 
   @ApiProperty({ default: Date.now()})
-  createdAt: Date;
+  createdAt?: Date;
 
   @ApiProperty({ default: Date.now() })
-  updatedAt: Date;
+  updatedAt?: Date;
 }
 
 export class AuthResponseDto {

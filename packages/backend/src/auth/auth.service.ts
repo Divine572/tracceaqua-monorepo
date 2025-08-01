@@ -1,5 +1,5 @@
 // src/auth/auth.service.ts
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,7 +11,7 @@ import { UserStatus } from 'src/common/enums/user-status.enum';
 
 import { ethers } from 'ethers';
 import * as bcrypt from 'bcryptjs';
-import { LoginDto, RegisterDto, UpdateProfileDto } from './dto';
+import { AuthResponseDto, LoginDto, RegisterDto, UpdateProfileDto, UserDto } from './dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 
 @Injectable()
@@ -66,7 +66,7 @@ Timestamp: ${timestamp}`;
     /**
      * Authenticate user with wallet signature
      */
-    async login(loginDto: LoginDto) {
+    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
         const { address, signature, message, email } = loginDto;
 
         // Verify wallet signature
@@ -81,6 +81,8 @@ Timestamp: ${timestamp}`;
             where: { address: address.toLowerCase() },
             include: { profile: true },
         });
+
+
 
         if (!user) {
             // Create new user with CONSUMER role (consumer-first approach)
@@ -119,6 +121,11 @@ Timestamp: ${timestamp}`;
             }
         }
 
+        // Assert user exists (it should always exist at this point)
+        if (!user) {
+            throw new InternalServerErrorException('Failed to create or retrieve user');
+        }
+
         // Check if user is active
         if (user.status !== UserStatus.ACTIVE) {
             throw new UnauthorizedException('User account is not active');
@@ -134,15 +141,16 @@ Timestamp: ${timestamp}`;
 
         const accessToken = this.jwtService.sign(payload);
 
+
         return {
             accessToken,
             user: {
                 id: user.id,
                 address: user.address,
-                email: user.email,
-                role: user.role,
-                status: user.status,
-                profile: user.profile,
+                email: user.email || "",
+                role: user.role || UserRole.CONSUMER,
+                status: user.status || UserStatus.ACTIVE,
+                profile: user.profile || {} as any, // Ensure profile is always an object
                 isNewUser: !user.profile?.firstName, // Consider user new if no name set
             },
         };
@@ -151,7 +159,7 @@ Timestamp: ${timestamp}`;
     /**
      * Register new user (alternative flow)
      */
-    async register(registerDto: RegisterDto) {
+    async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
         const { address, signature, message, email, firstName, lastName } = registerDto;
 
         // Verify signature
@@ -201,11 +209,11 @@ Timestamp: ${timestamp}`;
             user: {
                 id: user.id,
                 address: user.address,
-                email: user.email,
-                role: user.role,
-                status: user.status,
-                profile: user.profile,
-                isNewUser: true,
+                email: user.email || "",
+                role: user.role || UserRole.CONSUMER,
+                status: user.status || UserStatus.ACTIVE,
+                profile: user.profile || {} as any, // Ensure profile is always an object
+                isNewUser: true
             },
         };
     }
@@ -213,7 +221,7 @@ Timestamp: ${timestamp}`;
     /**
      * Get user profile
      */
-    async getProfile(userId: string) {
+    async getProfile(userId: string): Promise<UserDto> {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             include: { profile: true },
@@ -226,10 +234,10 @@ Timestamp: ${timestamp}`;
         return {
             id: user.id,
             address: user.address,
-            email: user.email,
-            role: user.role,
-            status: user.status,
-            profile: user.profile,
+            email: user.email || "",
+            role: user.role || UserRole.CONSUMER,
+            status: user.status || UserStatus.ACTIVE,
+            profile: user.profile || {} as any, // Ensure profile is always an object
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };
@@ -238,7 +246,7 @@ Timestamp: ${timestamp}`;
     /**
      * Update user profile
      */
-    async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
+    async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<UserDto> {
         const { firstName, lastName, bio, location, website, phoneNumber, organization } = updateProfileDto;
 
         // Check if user exists
@@ -284,7 +292,7 @@ Timestamp: ${timestamp}`;
         return {
             id: user.id,
             address: user.address,
-            email: user.email,
+            email: user.email || "",
             role: user.role,
             status: user.status,
             profile,
@@ -294,7 +302,7 @@ Timestamp: ${timestamp}`;
     /**
      * Verify JWT token
      */
-    async verifyToken(token: string) {
+    async verifyToken(token: string): Promise<{ valid: boolean; user?: UserDto; error?: string }> {
         try {
             const payload = this.jwtService.verify(token);
             const user = await this.prisma.user.findUnique({
@@ -311,10 +319,10 @@ Timestamp: ${timestamp}`;
                 user: {
                     id: user.id,
                     address: user.address,
-                    email: user.email,
+                    email: user.email || "",
                     role: user.role,
                     status: user.status,
-                    profile: user.profile,
+                    profile: user.profile || {} as any, // Ensure profile is always an object
                 },
             };
         } catch (error) {
