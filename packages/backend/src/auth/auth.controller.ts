@@ -38,6 +38,7 @@ import {
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
+
     @Public()
     @Post('generate-message')
     @HttpCode(HttpStatus.OK)
@@ -56,10 +57,52 @@ export class AuthController {
         const message = this.authService.generateAuthMessage(address, nonce);
         const generatedNonce = nonce || this.authService.generateNonce();
 
+        console.log(`Generated message for address ${address}: ${message}`);
+
+
         return {
             message,
             nonce: generatedNonce,
         };
+
+    }
+
+    @Public()
+    @Post('connect-wallet')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Simple wallet connection (no signature required)',
+        description: 'Connect wallet and create/login user without requiring message signature. Better UX for non-crypto native users.',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Wallet connected successfully',
+        type: AuthResponseDto,
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Invalid wallet address format',
+    })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                address: {
+                    type: 'string',
+                    example: '0x742d35Cc5C0532e5FeBd15e9B1C3fE3F1234567890',
+                    description: 'Wallet address'
+                },
+                email: {
+                    type: 'string',
+                    example: 'user@example.com',
+                    description: 'Optional email address'
+                }
+            },
+            required: ['address']
+        }
+    })
+    async connectWallet(@Body() body: { address: string; email?: string }): Promise<AuthResponseDto> {
+        return this.authService.connectWallet(body.address, body.email);
     }
 
     @Public()
@@ -207,6 +250,8 @@ export class AuthController {
         return this.authService.getProfile(user.id);
     }
 
+
+
     @Public()
     @Get('health')
     @ApiOperation({
@@ -224,4 +269,5 @@ export class AuthController {
         };
     }
 }
+
 

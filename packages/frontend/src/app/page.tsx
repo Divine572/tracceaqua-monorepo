@@ -1,17 +1,36 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
-        <h1 className="text-4xl font-bold text-primary mb-4">TracceAqua</h1>
-        <p className="text-muted-foreground">
-          Blockchain Seafood Traceability System
-        </p>
-        <div className="mt-6 p-4 border border-border rounded-lg bg-card">
-          <p className="text-card-foreground">CSS is working! 🎉</p>
-        </div>
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/use-auth'
+import { useOnboarding } from '@/components/onboarding/onboarding-provider'
+import { OnboardingFlow } from '@/components/onboarding/onboarding-flow'
+import { Loader2 } from 'lucide-react'
+
+export default function HomePage() {
+  const { isAuthenticated, isLoading } = useAuth()
+  const { hasCompletedOnboarding } = useOnboarding()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.push('/dashboard')
+      }
+    }
+  }, [isAuthenticated, isLoading, router])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800">
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
       </div>
-    </main>
-  )
+    )
+  }
+
+  if (!hasCompletedOnboarding || !isAuthenticated) {
+    return <OnboardingFlow />
+  }
+
+  return null // Will redirect
 }
