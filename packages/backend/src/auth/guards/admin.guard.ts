@@ -4,7 +4,8 @@ import { UserRole } from '../../common/enums/user-role.enum';
 @Injectable()
 export class AdminGuard implements CanActivate {
     canActivate(context: ExecutionContext): boolean {
-        const { user } = context.switchToHttp().getRequest();
+        const request = context.switchToHttp().getRequest();
+        const user = request.user;
 
         if (!user) {
             throw new ForbiddenException('User not authenticated');

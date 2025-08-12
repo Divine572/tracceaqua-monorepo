@@ -8,6 +8,7 @@ import { apiService } from '@/lib/api'
 export interface UseAuthReturn {
   // State
   user: any
+  token: string | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
@@ -287,6 +288,7 @@ export function useAuth(): UseAuthReturn {
   return {
     // State
     user,
+    token,
     isAuthenticated,
     isLoading,
     error,

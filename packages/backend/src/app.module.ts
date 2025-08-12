@@ -8,7 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 // These will be added in later stages
-// import { RoleApplicationsModule } from './role-applications/role-applications.module';
+import { RoleApplicationsModule } from './role-applications/role-applications.module';
 // import { AdminModule } from './admin/admin.module';
 // import { UploadModule } from './upload/upload.module';
 
@@ -27,6 +27,7 @@ import { uploadConfig } from './config/upload.config';
 // Main app components
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { IpfsModule } from './ipfs/ipfs.module';
 
 @Module({
   imports: [
@@ -60,8 +61,9 @@ import { AppService } from './app.service';
     PrismaModule,
     AuthModule,
     UsersModule,
+    IpfsModule,
     // These will be added in later stages
-    // RoleApplicationsModule,
+    RoleApplicationsModule,
     // AdminModule,
     // UploadModule,
   ],
