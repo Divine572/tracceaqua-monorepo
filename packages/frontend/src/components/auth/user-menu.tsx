@@ -13,20 +13,32 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { User, Settings, LogOut, Shield } from 'lucide-react'
-import { useSimpleAuth } from '@/hooks/use-simple-auth'
+import { useAuth } from '@/hooks/use-auth'
 import { useRouter } from 'next/navigation'
 
 export function UserMenu() {
-  const { user, logout, isLoading } = useSimpleAuth()
+  const { user, logout } = useAuth()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
 
   if (!user) return null
 
   const handleLogout = async () => {
-    await logout()
+    try {
+      await logout()
+      setIsOpen(false)
+      // Route to base URL (onboarding)
+      router.push('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Still redirect to home even if logout fails
+      router.push('/')
+    }
+  }
+
+  const handleSettings = () => {
     setIsOpen(false)
-    router.push('/')
+    router.push('/settings')
   }
 
   const getInitials = (user: any) => {
@@ -75,41 +87,37 @@ export function UserMenu() {
                 {user.role.replace('_', ' ')}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground font-mono">
-              {user.address.slice(0, 6)}...{user.address.slice(-4)}
+            <p className="text-xs text-muted-foreground">
+              {user.email || `${user.address.slice(0, 6)}...${user.address.slice(-4)}`}
             </p>
-            {user.email && (
-              <p className="text-xs text-muted-foreground">{user.email}</p>
-            )}
           </div>
         </DropdownMenuLabel>
         
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem onClick={() => router.push('/profile')}>
+        <DropdownMenuItem onClick={handleSettings}>
           <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem onClick={() => router.push('/settings')}>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
+          Profile & Settings
         </DropdownMenuItem>
         
         {user.role === 'ADMIN' && (
-          <DropdownMenuItem onClick={() => router.push('/admin')}>
+          <DropdownMenuItem onClick={() => {
+            setIsOpen(false)
+            router.push('/admin/users')
+          }}>
             <Shield className="mr-2 h-4 w-4" />
-            <span>Admin Panel</span>
+            Admin Panel
           </DropdownMenuItem>
         )}
         
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem onClick={handleLogout} disabled={isLoading}>
+        <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
+

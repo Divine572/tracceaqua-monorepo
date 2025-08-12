@@ -1,19 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RoleApplicationForm } from '@/components/role-applications/role-application-form'
 import { ApplicationStatus } from '@/components/role-applications/application-status'
 import { ApplicationDetailsModal } from '@/components/role-applications/application-details-modal'
 import { useRoleApplications } from '@/hooks/use-role-applications'
 import { useAuth } from '@/hooks/use-auth'
+import { useState } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RoleApplication } from '@/types'
-import { ArrowLeft, Plus, FileText } from 'lucide-react'
+import { FileText, Plus, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-export default function ApplyRolePage() {
+export default function MyApplicationsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const { userApplications, isLoadingApplications } = useRoleApplications()
@@ -33,7 +33,6 @@ export default function ApplyRolePage() {
 
   const handleApplicationSuccess = () => {
     setShowForm(false)
-    // Optionally show success message or redirect
   }
 
   if (isLoadingApplications) {
@@ -45,26 +44,20 @@ export default function ApplyRolePage() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.back()}
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <h1 className="text-2xl font-bold">Professional Role Application</h1>
-          </div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <FileText className="w-6 h-6 text-blue-600" />
+            My Role Applications
+          </h1>
           <p className="text-gray-600">
-            Apply for professional roles to contribute to the seafood supply chain
+            Manage your professional role applications
           </p>
         </div>
         
-        {!showForm && (
+        {!showForm && user?.role === 'CONSUMER' && (
           <Button onClick={() => setShowForm(true)}>
             <Plus className="w-4 h-4 mr-2" />
             New Application
@@ -78,7 +71,8 @@ export default function ApplyRolePage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Submit New Application</h2>
             <Button variant="outline" onClick={() => setShowForm(false)}>
-              Cancel
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Applications
             </Button>
           </div>
           <RoleApplicationForm onSuccess={handleApplicationSuccess} />

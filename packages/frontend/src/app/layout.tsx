@@ -1,22 +1,28 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AppProviders } from '@/providers/app-providers'
+import { AuthProvider } from '@/components/providers/auth-provider'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'TracceAqua - Seafood Traceability',
-  description: 'Blockchain-based seafood traceability system for the Nigerian shellfish supply chain',
-  keywords: ['seafood', 'traceability', 'blockchain', 'sustainability', 'Nigeria'],
+  title: 'TracceAqua - Blockchain Seafood Traceability',
+  description: 'Your trusted partner for traceability and conservation in the Nigerian shellfish supply chain',
+  keywords: ['seafood', 'traceability', 'blockchain', 'sustainability', 'Nigeria', 'aquaculture'],
   authors: [{ name: 'TracceAqua Team' }],
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
-  themeColor: '#3b82f6',
-  manifest: '/manifest.json',
+  creator: 'TracceAqua',
+  publisher: 'TracceAqua',
   icons: {
     icon: '/favicon.ico',
-    apple: '/icon-192x192.png',
   },
+  manifest: '/manifest.json',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({
@@ -28,7 +34,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AppProviders>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </AppProviders>
       </body>
     </html>

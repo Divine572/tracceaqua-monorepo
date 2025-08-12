@@ -19,8 +19,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
-import { useRoleApplications } from '@/hooks/use-role-applications'
-import { NavigationItem, UserRole, RoleApplication } from '@/types'
+import { NavigationItem, UserRole } from '@/types'
 
 const navigationItems: NavigationItem[] = [
   {
@@ -43,13 +42,13 @@ const navigationItems: NavigationItem[] = [
   },
   {
     name: 'Apply for Role',
-    href: '/apply-role',
+    href: '/my-applications',
     icon: User,
     roles: ['CONSUMER', 'PENDING_UPGRADE'],
   },
   {
     name: 'My Applications',
-    href: '/apply-role',
+    href: '/my-applications',
     icon: FileText,
     roles: ['CONSUMER', 'PENDING_UPGRADE'],
   },
@@ -90,13 +89,7 @@ const navigationItems: NavigationItem[] = [
 export function SidebarNav() {
   const pathname = usePathname()
   const { user } = useAuth()
-  const { userApplications } = useRoleApplications()
   const [expandedSections, setExpandedSections] = useState<string[]>(['main'])
-
-  // Count pending applications for admin badge
-  const pendingApplicationsCount = user?.role === 'ADMIN' 
-    ? userApplications?.filter((app: RoleApplication) => app.status === 'PENDING' || app.status === 'RESUBMITTED').length || 0
-    : 0
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => 
@@ -114,22 +107,15 @@ export function SidebarNav() {
   }
 
   const canAccessRoute = (roles: UserRole[] | ['*']) => {
-    // Check if it's a wildcard role (accessible to all users)
-    if (Array.isArray(roles) && roles.length === 1 && roles[0] === '*') return true
+    // Type guard to check if it's the wildcard array
+    if (roles.length === 1 && roles[0] === '*') return true
     if (!user?.role) return false
+    // Now TypeScript knows roles is UserRole[]
     return (roles as UserRole[]).includes(user.role as UserRole)
   }
 
   const getItemBadge = (item: NavigationItem) => {
-    if (item.href === '/admin/applications' && pendingApplicationsCount > 0) {
-      return (
-        <Badge variant="destructive" className="ml-auto text-xs">
-          {pendingApplicationsCount}
-        </Badge>
-      )
-    }
-    
-    if (item.href === '/apply-role' && user?.role === 'PENDING_UPGRADE') {
+    if (item.href === '/my-applications' && user?.role === 'PENDING_UPGRADE') {
       return (
         <Badge variant="outline" className="ml-auto text-xs bg-yellow-50 text-yellow-700">
           Pending

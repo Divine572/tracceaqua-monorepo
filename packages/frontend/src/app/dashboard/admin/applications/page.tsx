@@ -19,7 +19,7 @@ export default function AdminApplicationsPage() {
 
   if (user?.role !== 'ADMIN') {
     return (
-      <div className="container mx-auto py-8">
+      <div className="space-y-6">
         <Card>
           <CardContent className="pt-6">
             <Alert variant="destructive">
@@ -35,7 +35,7 @@ export default function AdminApplicationsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Shield className="w-6 h-6 text-blue-600" />
         <h1 className="text-2xl font-bold">Role Applications Management</h1>

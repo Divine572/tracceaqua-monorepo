@@ -95,8 +95,13 @@ export function useAuth(): UseAuthReturn {
   }, [token, user, login, logoutStore, setLoading])
 
   const connectWallet = useCallback(() => {
+    if (!open) {
+      console.error('AppKit not initialized')
+      setError('Wallet connection not available. Please refresh the page.')
+      return
+    }
     open()
-  }, [open])
+  }, [open, setError])
 
   const disconnectWallet = useCallback(() => {
     disconnect()
@@ -309,3 +314,4 @@ export function useAuth(): UseAuthReturn {
     refreshProfile,
   }
 }
+
