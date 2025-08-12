@@ -48,11 +48,11 @@ export default function DashboardPage() {
     case 'FISHERMAN':
     case 'PROCESSOR':
     case 'TRADER':
+    case 'DISTRIBUTOR':
     case 'RETAILER':
       return <ProfessionalDashboard />
     
     case 'CONSUMER':
-    case 'PENDING_UPGRADE':
     default:
       return <ConsumerDashboard />
   }

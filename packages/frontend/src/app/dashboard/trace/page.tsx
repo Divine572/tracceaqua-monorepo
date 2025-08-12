@@ -225,7 +225,7 @@ export default function TracePage({ params }: { params: { id: string } }) {
               </AlertDescription>
             </Alert>
             <div className="mt-4 text-center">
-              <Button onClick={() => router.push('/scan')}>
+              <Button onClick={() => router.push('/dashboard/scan')}>
                 Try Another Product
               </Button>
             </div>

@@ -95,6 +95,23 @@ export function ApplicationStatus({ applications, onViewDetails, onResubmit }: A
     }
   }
 
+  // Handle loading state or invalid data
+  if (!applications || !Array.isArray(applications)) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8">
+            <RefreshCw className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Applications</h3>
+            <p className="text-gray-600">
+              Please wait while we fetch your applications...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (applications.length === 0) {
     return (
       <Card>

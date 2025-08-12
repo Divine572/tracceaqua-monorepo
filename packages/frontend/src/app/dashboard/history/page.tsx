@@ -248,7 +248,7 @@ export default function HistoryPage() {
                     : 'Start scanning products to build your history'
                   }
                 </p>
-                <Link href="/scan">
+                <Link href="/dashboard/scan">
                   <Button>
                     <QrCode className="w-4 h-4 mr-2" />
                     Scan Your First Product

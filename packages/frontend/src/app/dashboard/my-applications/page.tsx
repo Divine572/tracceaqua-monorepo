@@ -105,7 +105,7 @@ export default function MyApplicationsPage() {
           <div>
             <h2 className="text-lg font-semibold mb-4">Your Applications</h2>
             <ApplicationStatus
-              applications={userApplications}
+                applications={userApplications || []}
               onViewDetails={handleViewDetails}
               onResubmit={handleResubmit}
             />

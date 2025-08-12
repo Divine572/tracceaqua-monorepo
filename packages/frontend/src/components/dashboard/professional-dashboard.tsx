@@ -240,7 +240,7 @@ export function ProfessionalDashboard() {
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-3">
         <Button variant="outline" className="h-16" asChild>
-          <Link href="/scan">
+          <Link href="/dashboard/scan">
             <div className="text-center">
               <QrCode className="w-5 h-5 mx-auto mb-1" />
               <span className="text-sm">Scan QR</span>
@@ -249,7 +249,7 @@ export function ProfessionalDashboard() {
         </Button>
         
         <Button variant="outline" className="h-16" asChild>
-          <Link href="/history">
+          <Link href="/dashboard/history">
             <div className="text-center">
               <FileText className="w-5 h-5 mx-auto mb-1" />
               <span className="text-sm">View History</span>
@@ -258,7 +258,7 @@ export function ProfessionalDashboard() {
         </Button>
         
         <Button variant="outline" className="h-16" asChild>
-          <Link href="/settings">
+          <Link href="/dashboard/settings">
             <div className="text-center">
               <Users className="w-5 h-5 mx-auto mb-1" />
               <span className="text-sm">Settings</span>

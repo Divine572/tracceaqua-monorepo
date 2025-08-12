@@ -30,57 +30,57 @@ const navigationItems: NavigationItem[] = [
   },
   {
     name: 'Scan QR Code',
-    href: '/scan',
+    href: '/dashboard/scan',
     icon: QrCode,
     roles: ['*'],
   },
   {
     name: 'History',
-    href: '/history',
+    href: '/dashboard/history',
     icon: History,
     roles: ['*'],
   },
   {
     name: 'Apply for Role',
-    href: '/my-applications',
+    href: '/dashboard/my-applications',
     icon: User,
     roles: ['CONSUMER', 'PENDING_UPGRADE'],
   },
   {
     name: 'My Applications',
-    href: '/my-applications',
+    href: '/dashboard/my-applications',
     icon: FileText,
     roles: ['CONSUMER', 'PENDING_UPGRADE'],
   },
   // Professional User Features
   {
     name: 'Conservation',
-    href: '/conservation',
+    href: '/dashboard/conservation',
     icon: Building2,
     roles: ['RESEARCHER', 'FARMER', 'FISHERMAN'],
   },
   {
     name: 'Supply Chain',
-    href: '/supply-chain',
+    href: '/dashboard/supply-chain',
     icon: Building2,
     roles: ['FARMER', 'FISHERMAN', 'PROCESSOR', 'TRADER', 'RETAILER'],
   },
   // Admin Features
   {
     name: 'User Management',
-    href: '/admin/users',
+    href: '/dashboard/admin/users',
     icon: Users,
     roles: ['ADMIN'],
   },
   {
     name: 'Role Applications',
-    href: '/admin/applications',
+    href: '/dashboard/admin/applications',
     icon: Shield,
     roles: ['ADMIN'],
   },
   {
     name: 'Settings',
-    href: '/settings',
+    href: '/dashboard/settings',
     icon: Settings,
     roles: ['*'],
   },
@@ -115,7 +115,7 @@ export function SidebarNav() {
   }
 
   const getItemBadge = (item: NavigationItem) => {
-    if (item.href === '/my-applications' && user?.role === 'PENDING_UPGRADE') {
+    if (item.href === '/dashboard/my-applications' && user?.role === 'PENDING_UPGRADE') {
       return (
         <Badge variant="outline" className="ml-auto text-xs bg-yellow-50 text-yellow-700">
           Pending

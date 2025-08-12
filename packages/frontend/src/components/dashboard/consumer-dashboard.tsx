@@ -68,7 +68,7 @@ export function ConsumerDashboard() {
                 {latestApplication.status.toLowerCase().replace('_', ' ')}
               </span>
               .{' '}
-              <Link href="/apply-role" className="text-blue-600 hover:underline">
+              <Link href="/dashboard/my-applications" className="text-blue-600 hover:underline">
                 View details
               </Link>
             </AlertDescription>
@@ -90,7 +90,7 @@ export function ConsumerDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Link href="/scan">
+            <Link href="/dashboard/scan">
               <Button className="w-full bg-blue-600 hover:bg-blue-700">
                 Scan Now
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -111,7 +111,7 @@ export function ConsumerDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Link href="/trace">
+            <Link href="/dashboard/trace">
               <Button variant="outline" className="w-full">
                 Enter Code
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -132,7 +132,7 @@ export function ConsumerDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Link href="/history">
+            <Link href="/dashboard/history">
               <Button variant="outline" className="w-full">
                 View History
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -189,7 +189,7 @@ export function ConsumerDashboard() {
                 Join as a professional stakeholder to contribute data to the seafood supply chain and help build transparency.
               </p>
             </div>
-            <Link href="/apply-role">
+            <Link href="/dashboard/my-applications">
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                 <User className="w-4 h-4 mr-2" />
                 Apply for Professional Role

@@ -160,7 +160,7 @@ export function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Link href="/admin/users">
+            <Link href="/dashboard/admin/users">
               <Button className="w-full">
                 Manage Users
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -188,7 +188,7 @@ export function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Link href="/admin/applications">
+            <Link href="/dashboard/admin/applications">
               <Button variant="outline" className="w-full">
                 Review Applications
                 <ArrowRight className="w-4 h-4 ml-2" />
