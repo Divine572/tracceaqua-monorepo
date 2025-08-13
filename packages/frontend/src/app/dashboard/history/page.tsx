@@ -297,16 +297,16 @@ export default function HistoryPage() {
                   </div>
 
                   <div className="flex flex-col gap-2 ml-4">
-                    <Link href={`/trace/${item.productId}`}>
+                    <Link href={`/dashboard/trace/${item.productId}`}>
                       <Button variant="outline" size="sm">
                         <Eye className="w-4 h-4 mr-1" />
                         View Trace
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="sm">
+                    {/* <Button variant="ghost" size="sm">
                       <ExternalLink className="w-4 h-4 mr-1" />
                       Share
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </CardContent>

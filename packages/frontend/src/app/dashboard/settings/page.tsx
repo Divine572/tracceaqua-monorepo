@@ -111,7 +111,7 @@ export default function SettingsPage() {
             <User className="w-4 h-4 mr-2" />
             Profile
           </TabsTrigger>
-          <TabsTrigger value="notifications">
+          {/* <TabsTrigger value="notifications">
             <Bell className="w-4 h-4 mr-2" />
             Notifications
           </TabsTrigger>
@@ -122,18 +122,18 @@ export default function SettingsPage() {
           <TabsTrigger value="appearance">
             <Palette className="w-4 h-4 mr-2" />
             Appearance
-          </TabsTrigger>
+          </TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
-          <Card>
+          <Card className='bg-[#f8fafc]'>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>
+              <CardTitle className='text-black'>Profile Information</CardTitle>
+              <CardDescription className='text-[#64748b]'>
                 Update your personal information and profile details
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 text-[#1e293b]">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
@@ -149,6 +149,7 @@ export default function SettingsPage() {
                     id="lastName"
                     value={profileData.lastName}
                     onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
+                    className='bg-white'
                   />
                 </div>
               </div>
