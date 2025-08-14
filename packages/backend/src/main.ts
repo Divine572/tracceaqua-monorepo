@@ -22,6 +22,8 @@ async function bootstrap() {
     exclude: ['/', '/health'],
   });
 
+
+
   // Enable CORS
   app.enableCors({
     origin: corsOrigin,
