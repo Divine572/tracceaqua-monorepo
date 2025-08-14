@@ -49,6 +49,7 @@ export function useAuth(): UseAuthReturn {
     clearError,
   } = useAuthStore()
 
+
   // Clear error when sign error occurs
   useEffect(() => {
     if (isSignError && signError) {
@@ -58,17 +59,12 @@ export function useAuth(): UseAuthReturn {
 
   // Validate token on mount and address change
   useEffect(() => {
+    console.log("Trying to validate token...")
     if (token && !user) {
+      console.log("Validating token...")
       validateToken()
     }
   }, [token])
-
-  // Handle wallet disconnection
-  useEffect(() => {
-    if (!isConnected && isAuthenticated) {
-      handleLogout()
-    }
-  }, [isConnected, isAuthenticated])
 
   const validateToken = useCallback(async () => {
     if (!token) return
@@ -314,4 +310,3 @@ export function useAuth(): UseAuthReturn {
     refreshProfile,
   }
 }
-

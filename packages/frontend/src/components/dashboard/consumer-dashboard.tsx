@@ -1,9 +1,15 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   QrCode,
   History,
@@ -13,62 +19,66 @@ import {
   Clock,
   AlertCircle,
   FileText,
-  Sparkles
-} from 'lucide-react'
-import Link from 'next/link'
-import { useAuth } from '@/hooks/use-auth'
-import { useRoleApplications } from '@/hooks/use-role-applications'
+  Sparkles,
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
+import { useRoleApplications } from "@/hooks/use-role-applications";
 
 export function ConsumerDashboard() {
-  const { user } = useAuth()
-  const { userApplications, isLoadingApplications } = useRoleApplications()
+  const { user } = useAuth();
+  const { userApplications, isLoadingApplications } = useRoleApplications();
 
-  const hasApplications = userApplications && userApplications.length > 0
-  const latestApplication = hasApplications ? userApplications[0] : null
+  const hasApplications = userApplications && userApplications.length > 0;
+  const latestApplication = hasApplications ? userApplications[0] : null;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'APPROVED':
-        return <CheckCircle2 className="w-4 h-4 text-green-600" />
-      case 'PENDING':
-      case 'UNDER_REVIEW':
-      case 'RESUBMITTED':
-        return <Clock className="w-4 h-4 text-yellow-600" />
-      case 'REJECTED':
-        return <AlertCircle className="w-4 h-4 text-red-600" />
+      case "APPROVED":
+        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      case "PENDING":
+      case "UNDER_REVIEW":
+      case "RESUBMITTED":
+        return <Clock className="w-4 h-4 text-yellow-600" />;
+      case "REJECTED":
+        return <AlertCircle className="w-4 h-4 text-red-600" />;
       default:
-        return <FileText className="w-4 h-4 text-gray-600" />
+        return <FileText className="w-4 h-4 text-gray-600" />;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Welcome to TracceAqua, {user?.profile?.firstName || 'Consumer'}! 👋
+      <div className="space-y-2 bg-linear-to-r from-[#1e40af] to-[#0891b2] rounded-b-lg pt-2 pb-4 px-4">
+        <h1 className="text-2xl font-bold text-white">
+          Welcome to TracceAqua, {user?.profile?.firstName || "Consumer"}! 👋
         </h1>
-        <p className="text-gray-600">
-          Trace seafood products to ensure quality and sustainability. Start by scanning a QR code on any TracceAqua-enabled product.
+        <p className="text-white">
+          Trace seafood products to ensure quality and sustainability. Start by
+          scanning a QR code on any TracceAqua-enabled product.
         </p>
       </div>
 
       {/* Role Application Status */}
-      {user?.role === 'PENDING_UPGRADE' && latestApplication && (
+      {user?.role === "PENDING_UPGRADE" && latestApplication && (
         <Alert className="border-yellow-200 bg-yellow-50">
           <div className="flex items-center gap-2">
             {getStatusIcon(latestApplication.status)}
             <AlertDescription>
-              <strong>Role Application Update:</strong> Your application for{' '}
+              <strong>Role Application Update:</strong> Your application for{" "}
               <Badge variant="outline" className="mx-1">
-                {latestApplication.requestedRole.replace('_', ' ')}
+                {latestApplication.requestedRole.replace("_", " ")}
               </Badge>
-              role is{' '}
+              role is{" "}
               <span className="font-medium">
-                {latestApplication.status.toLowerCase().replace('_', ' ')}
+                {latestApplication.status.toLowerCase().replace("_", " ")}
               </span>
-              .{' '}
-              <Link href="/dashboard/my-applications" className="text-blue-600 hover:underline">
+              .{" "}
+              <Link
+                href="/dashboard/my-applications"
+                className="text-blue-600 hover:underline"
+              >
                 View details
               </Link>
             </AlertDescription>
@@ -79,13 +89,13 @@ export function ConsumerDashboard() {
       {/* Main Action Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Scan QR Code */}
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md transition-shadow border-blue-500">
           <CardHeader className="pb-3">
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
               <QrCode className="w-6 h-6 text-blue-600" />
             </div>
             <CardTitle className="text-lg">Scan QR Code</CardTitle>
-            <CardDescription>
+            <CardDescription className="">
               Scan a product QR code to trace its journey from source to plate
             </CardDescription>
           </CardHeader>
@@ -100,7 +110,7 @@ export function ConsumerDashboard() {
         </Card>
 
         {/* Enter Code Manually */}
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md transition-shadow border-blue-500">
           <CardHeader className="pb-3">
             <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
               <FileText className="w-6 h-6 text-gray-600" />
@@ -111,17 +121,21 @@ export function ConsumerDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Link href="/dashboard/trace">
-              <Button variant="outline" className="w-full">
-                Enter Code
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
+            {/* <Link href="/dashboard/trace" className='bg-blue-600 hover:bg-blue-700'> */}
+            <Button className="w-full bg-blue-600 hover:bg-blue-700">
+              <Link
+                href="/dashboard/trace"
+                // className="bg-blue-600 hover:bg-blue-700"
+              ></Link>
+              Enter Code
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+            {/* </Link> */}
           </CardContent>
         </Card>
 
         {/* View History */}
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className="hover:shadow-md transition-shadow border-blue-500">
           <CardHeader className="pb-3">
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3">
               <History className="w-6 h-6 text-green-600" />
@@ -132,18 +146,20 @@ export function ConsumerDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Link href="/dashboard/history">
-              <Button variant="outline" className="w-full">
-                View History
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700">
+              <Link
+                href="/dashboard/history"
+                // className="bg-blue-600 hover:bg-blue-700"
+              ></Link>
+              View History
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
           </CardContent>
         </Card>
       </div>
 
       {/* How TracceAqua Works */}
-      <Card>
+      <Card className="border-blue-500">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
@@ -158,19 +174,25 @@ export function ConsumerDashboard() {
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
                 <span className="text-sm font-bold text-blue-600">1</span>
               </div>
-              <h3 className="font-medium">Scan the QR code on your seafood product</h3>
+              <h3 className="font-medium">
+                Scan the QR code on your seafood product
+              </h3>
             </div>
             <div className="text-center space-y-2">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
                 <span className="text-sm font-bold text-blue-600">2</span>
               </div>
-              <h3 className="font-medium">View the complete journey from harvest to retail</h3>
+              <h3 className="font-medium">
+                View the complete journey from harvest to retail
+              </h3>
             </div>
             <div className="text-center space-y-2">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
                 <span className="text-sm font-bold text-blue-600">3</span>
               </div>
-              <h3 className="font-medium">Verify quality, sustainability, and authenticity</h3>
+              <h3 className="font-medium">
+                Verify quality, sustainability, and authenticity
+              </h3>
             </div>
           </div>
         </CardContent>
@@ -184,9 +206,12 @@ export function ConsumerDashboard() {
               <Sparkles className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Ready for More?</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Ready for More?
+              </h3>
               <p className="text-gray-600 max-w-md mx-auto">
-                Join as a professional stakeholder to contribute data to the seafood supply chain and help build transparency.
+                Join as a professional stakeholder to contribute data to the
+                seafood supply chain and help build transparency.
               </p>
             </div>
             <Link href="/dashboard/my-applications">
@@ -199,5 +224,5 @@ export function ConsumerDashboard() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

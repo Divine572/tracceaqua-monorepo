@@ -10,6 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function DashboardPage() {
   const { user, isLoading } = useAuth()
 
+  console.log(user)
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -26,17 +28,17 @@ export default function DashboardPage() {
     )
   }
 
-  if (!user) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-8">
-            <p className="text-gray-600">Please log in to access your dashboard.</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
+  // if (!user) {
+  //   return (
+  //     <Card>
+  //       <CardContent className="pt-6">
+  //         <div className="text-center py-8">
+  //           <p className="text-gray-600">Please log in to access your dashboard.</p>
+  //         </div>
+  //       </CardContent>
+  //     </Card>
+  //   )
+  // }
 
   // Route to appropriate dashboard based on user role
   switch (user.role) {

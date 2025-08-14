@@ -1,7 +1,9 @@
 // packages/frontend/src/app/(dashboard)/layout.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useAccount } from 'wagmi'
+
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { UserMenu } from '@/components/auth/user-menu'
@@ -9,6 +11,8 @@ import { SidebarNav } from '@/components/layout/sidebar-nav'
 import { useAuth } from '@/hooks/use-auth'
 import { Menu, Waves } from 'lucide-react'
 import Link from 'next/link'
+import { useUser } from '@/stores/auth-store'
+import { AuthDebug } from '@/components/debug/auth-debug'
 
 export default function DashboardLayout({
   children,
@@ -16,9 +20,16 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, isAuthenticated, isConnected } = useAuth()
+  // const {isConnected} = useAccount()
 
-  if (isLoading) {
+  useEffect(() => {
+
+  })
+
+  console.log(user)
+
+  if (isLoading && !isConnected && isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -26,9 +37,10 @@ export default function DashboardLayout({
     )
   }
 
-  if (!user) {
+  if (!user && !isConnected && isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        {/* <AuthDebug/> */}
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
           <p className="text-gray-600">Please log in to access the dashboard.</p>
@@ -42,6 +54,7 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-white">
+      {/* <AuthDebug/> */}
       {/* Mobile Header */}
       <div className="lg:hidden">
         <div className="flex items-center justify-between p-4 border-b bg-white">
@@ -107,7 +120,7 @@ export default function DashboardLayout({
 
           {/* Page Content */}
           <main className="flex-1">
-            <div className="py-6">
+            <div className="py-">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {children}
               </div>
