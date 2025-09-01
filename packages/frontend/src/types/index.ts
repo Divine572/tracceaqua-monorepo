@@ -17,10 +17,8 @@ export type UserStatus =
 
 export type ApplicationStatus = 
   | 'PENDING'
-  | 'UNDER_REVIEW'
   | 'APPROVED'
   | 'REJECTED'
-  | 'RESUBMITTED'
 
 export interface UserProfile {
   id: string

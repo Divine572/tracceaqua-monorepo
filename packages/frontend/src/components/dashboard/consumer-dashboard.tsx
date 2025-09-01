@@ -37,8 +37,6 @@ export function ConsumerDashboard() {
       case "APPROVED":
         return <CheckCircle2 className="w-4 h-4 text-green-600" />;
       case "PENDING":
-      case "UNDER_REVIEW":
-      case "RESUBMITTED":
         return <Clock className="w-4 h-4 text-yellow-600" />;
       case "REJECTED":
         return <AlertCircle className="w-4 h-4 text-red-600" />;

@@ -28,6 +28,7 @@ import { uploadConfig } from './config/upload.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { IpfsModule } from './ipfs/ipfs.module';
+import { ConservationModule } from './conservation/conservation.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { IpfsModule } from './ipfs/ipfs.module';
     IpfsModule,
     // These will be added in later stages
     RoleApplicationsModule,
+    ConservationModule,
     // AdminModule,
     // UploadModule,
   ],
@@ -95,3 +97,6 @@ import { IpfsModule } from './ipfs/ipfs.module';
   ],
 })
 export class AppModule { }
+
+
+

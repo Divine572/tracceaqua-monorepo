@@ -1,11 +1,11 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'RESEARCHER', 'FARMER', 'FISHERMAN', 'PROCESSOR', 'TRADER', 'RETAILER', 'CONSUMER', 'PENDING_UPGRADE');
+CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'RESEARCHER', 'FARMER', 'FISHERMAN', 'PROCESSOR', 'TRADER', 'RETAILER', 'CONSUMER');
 
 -- CreateEnum
 CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'PENDING', 'SUSPENDED', 'REJECTED');
 
 -- CreateEnum
-CREATE TYPE "ApplicationStatus" AS ENUM ('PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'RESUBMITTED');
+CREATE TYPE "ApplicationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'UNDER_REVIEW');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -78,7 +78,20 @@ CREATE TABLE "conservation_records" (
     "id" TEXT NOT NULL,
     "samplingId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
+    "locationData" JSONB NOT NULL,
+    "speciesData" JSONB NOT NULL,
+    "samplingData" JSONB NOT NULL,
+    "labTests" JSONB,
+    "fileHashes" TEXT[],
+    "researcherNotes" TEXT,
+    "weatherConditions" TEXT,
+    "tidalConditions" TEXT,
     "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "dataHash" TEXT,
+    "blockchainHash" TEXT,
+    "verifiedAt" TIMESTAMP(3),
+    "verifiedBy" TEXT,
+    "verificationNotes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -90,7 +103,28 @@ CREATE TABLE "supply_chain_records" (
     "id" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "batchId" TEXT,
+    "sourceType" TEXT NOT NULL,
+    "speciesName" TEXT NOT NULL,
+    "productName" TEXT,
+    "productDescription" TEXT,
+    "hatcheryData" JSONB,
+    "growOutData" JSONB,
+    "harvestData" JSONB,
+    "fishingData" JSONB,
+    "processingData" JSONB,
+    "distributionData" JSONB,
+    "retailData" JSONB,
+    "currentStage" TEXT NOT NULL,
+    "qrCodeData" TEXT,
+    "fileHashes" TEXT[],
+    "dataHash" TEXT,
+    "blockchainHash" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "isPublic" BOOLEAN NOT NULL DEFAULT true,
+    "qualityGrade" TEXT,
+    "certifications" TEXT[],
+    "testResults" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -110,7 +144,40 @@ CREATE UNIQUE INDEX "user_profiles_userId_key" ON "user_profiles"("userId");
 CREATE UNIQUE INDEX "conservation_records_samplingId_key" ON "conservation_records"("samplingId");
 
 -- CreateIndex
+CREATE INDEX "conservation_records_userId_idx" ON "conservation_records"("userId");
+
+-- CreateIndex
+CREATE INDEX "conservation_records_status_idx" ON "conservation_records"("status");
+
+-- CreateIndex
+CREATE INDEX "conservation_records_samplingId_idx" ON "conservation_records"("samplingId");
+
+-- CreateIndex
+CREATE INDEX "conservation_records_createdAt_idx" ON "conservation_records"("createdAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "supply_chain_records_productId_key" ON "supply_chain_records"("productId");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_records_userId_idx" ON "supply_chain_records"("userId");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_records_productId_idx" ON "supply_chain_records"("productId");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_records_batchId_idx" ON "supply_chain_records"("batchId");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_records_currentStage_idx" ON "supply_chain_records"("currentStage");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_records_sourceType_idx" ON "supply_chain_records"("sourceType");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_records_isPublic_idx" ON "supply_chain_records"("isPublic");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_records_createdAt_idx" ON "supply_chain_records"("createdAt");
 
 -- AddForeignKey
 ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -128,7 +195,7 @@ ALTER TABLE "admin_actions" ADD CONSTRAINT "admin_actions_adminId_fkey" FOREIGN 
 ALTER TABLE "admin_actions" ADD CONSTRAINT "admin_actions_targetId_fkey" FOREIGN KEY ("targetId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "conservation_records" ADD CONSTRAINT "conservation_records_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "conservation_records" ADD CONSTRAINT "conservation_records_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "supply_chain_records" ADD CONSTRAINT "supply_chain_records_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "supply_chain_records" ADD CONSTRAINT "supply_chain_records_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

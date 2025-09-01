@@ -35,9 +35,7 @@ export interface RoleApplication {
   }
 }
 
-export type ApplicationStatus = 
+export type ApplicationStatus =
   | 'PENDING'
-  | 'UNDER_REVIEW' 
   | 'APPROVED'
-  | 'REJECTED'
-  | 'RESUBMITTED'
+  | 'REJECTED';

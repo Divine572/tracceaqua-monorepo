@@ -7,5 +7,4 @@ export enum UserRole {
   TRADER = 'TRADER',
   RETAILER = 'RETAILER',
   CONSUMER = 'CONSUMER',
-  PENDING_UPGRADE = 'PENDING_UPGRADE',
 }

@@ -146,8 +146,8 @@ async function main() {
     data: {
       address: '0x7234567890123456789012345678901234567890',
       email: 'pending@example.com',
-      role: 'PENDING_UPGRADE',
-      status: 'ACTIVE',
+      role: 'CONSUMER',
+      status: 'PENDING',
       profile: {
         create: {
           firstName: 'Sarah',

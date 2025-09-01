@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
-import { ApplicationStatus } from '../common/enums/application-status.enum';
+import { ApplicationStatus } from '@prisma/client';
 import { CreateRoleApplicationDto } from './dto/create-role-application.dto';
 import { ReviewApplicationDto } from './dto/review-application.dto';
 import { UpdateApplicationDto } from './dto/update-role-application.dto';
@@ -34,7 +34,7 @@ export class RoleApplicationsService {
                 roleApplications: {
                     where: {
                         status: {
-                            in: [ApplicationStatus.PENDING, ApplicationStatus.UNDER_REVIEW]
+                            in: [ApplicationStatus.PENDING]
                         }
                     }
                 }
@@ -70,8 +70,8 @@ export class RoleApplicationsService {
             try {
                 documentHashes = await Promise.all(
                     documents.map(async (file) => {
-                        const ipfsHash = await this.ipfsService.uploadFile(file);
-                        return ipfsHash;
+                        const uploadResult = await this.ipfsService.uploadFile(file);
+                        return uploadResult.hash;
                     })
                 );
                 console.log('✅ Documents uploaded:', documentHashes);
@@ -101,10 +101,10 @@ export class RoleApplicationsService {
             }
         });
 
-        // Update user status to show they're applying for an upgrade
+        // Update user status to show they have a pending application
         await this.prisma.user.update({
             where: { id: userId },
-            data: { role: UserRole.PENDING_UPGRADE }
+            data: { status: UserStatus.PENDING }
         });
 
         console.log('✅ Role application submitted successfully');
@@ -212,8 +212,7 @@ export class RoleApplicationsService {
             throw new NotFoundException('Application not found');
         }
 
-        if (application.status !== ApplicationStatus.PENDING &&
-            application.status !== ApplicationStatus.UNDER_REVIEW) {
+        if (application.status !== ApplicationStatus.PENDING) {
             throw new BadRequestException('Application has already been reviewed');
         }
 
@@ -314,8 +313,8 @@ export class RoleApplicationsService {
             try {
                 newDocumentHashes = await Promise.all(
                     documents.map(async (file) => {
-                        const ipfsHash = await this.ipfsService.uploadFile(file);
-                        return ipfsHash;
+                        const uploadResult = await this.ipfsService.uploadFile(file);
+                        return uploadResult.hash;
                     })
                 );
             } catch (error) {
@@ -337,7 +336,7 @@ export class RoleApplicationsService {
                 experience: updateDto.experience || application.experience,
                 motivation: updateDto.motivation || application.motivation,
                 documents: allDocuments,
-                status: ApplicationStatus.RESUBMITTED,
+                status: ApplicationStatus.PENDING,
                 reviewedBy: null,
                 adminFeedback: null,
                 reviewedAt: null,
@@ -347,10 +346,10 @@ export class RoleApplicationsService {
             }
         });
 
-        // Update user role back to PENDING_UPGRADE
+        // Update user status back to PENDING
         await this.prisma.user.update({
             where: { id: userId },
-            data: { role: UserRole.PENDING_UPGRADE }
+            data: { status: UserStatus.PENDING }
         });
 
         console.log('✅ Application updated and resubmitted');
@@ -399,16 +398,12 @@ export class RoleApplicationsService {
             totalApplications,
             pendingCount,
             approvedCount,
-            rejectedCount,
-            underReviewCount,
-            resubmittedCount
+            rejectedCount
         ] = await Promise.all([
             this.prisma.roleApplication.count(),
             this.prisma.roleApplication.count({ where: { status: ApplicationStatus.PENDING } }),
             this.prisma.roleApplication.count({ where: { status: ApplicationStatus.APPROVED } }),
             this.prisma.roleApplication.count({ where: { status: ApplicationStatus.REJECTED } }),
-            this.prisma.roleApplication.count({ where: { status: ApplicationStatus.UNDER_REVIEW } }),
-            this.prisma.roleApplication.count({ where: { status: ApplicationStatus.RESUBMITTED } }),
         ]);
 
         const roleBreakdown = await this.prisma.roleApplication.groupBy({
@@ -422,8 +417,6 @@ export class RoleApplicationsService {
                 pending: pendingCount,
                 approved: approvedCount,
                 rejected: rejectedCount,
-                underReview: underReviewCount,
-                resubmitted: resubmittedCount,
             },
             byRole: roleBreakdown.reduce((acc, item) => {
                 acc[item.requestedRole] = item._count;

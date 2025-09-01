@@ -285,7 +285,7 @@ export class RoleApplicationsController {
             throw new Error('Application not found');
         }
 
-        // Update status to UNDER_REVIEW
+        // Update status to PENDING
         // Note: You would implement this method in the service
         return application; // Placeholder - implement the actual update logic
     }

@@ -1,3 +1,5 @@
+
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -28,7 +30,7 @@ model User {
   adminActionsReceived  AdminAction[] @relation("TargetUser")
   reviewedApplications RoleApplication[] @relation("AdminReviewer")
   
-  // Future Phase Relations (will be added later)
+  // Conservation & Supply Chain Relations
   conservationRecords  ConservationRecord[]
   supplyChainRecords   SupplyChainRecord[]
 
@@ -87,13 +89,14 @@ model RoleApplication {
   @@map("role_applications")
 }
 
+
 model AdminAction {
   id          String   @id @default(cuid())
   adminId     String   // Who performed the action
   targetId    String   // Who/what was affected
   action      String   // Action type (APPROVE_ROLE, REJECT_APPLICATION, etc.)
   description String?  // Detailed description
-  metadata    Json?    // Additional action data
+  metadata    Json?    // Additional action metadata
   createdAt   DateTime @default(now())
 
   // Relations
@@ -103,34 +106,110 @@ model AdminAction {
   @@map("admin_actions")
 }
 
-// ===== PLACEHOLDER MODELS FOR FUTURE PHASES =====
-// These will be expanded in later phases
+// ===== CONSERVATION MODULE MODELS =====
 
 model ConservationRecord {
-  id                String   @id @default(cuid())
-  samplingId        String   @unique
-  userId            String
-  status            String   @default("DRAFT")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
+  id                   String   @id @default(cuid())
+  samplingId           String   @unique  // Unique sampling identifier
+  userId               String   // Researcher who created this record
+  
+  // Core Data (stored as JSON for flexibility)
+  locationData         Json     // GPS, water body, environmental conditions
+  speciesData          Json     // Species info, counts, measurements
+  samplingData         Json     // Methods, duration, gear specs
+  labTests             Json?    // Array of lab test results
+  
+  // File Management
+  fileHashes           String[] // IPFS hashes of uploaded files
+  
+  // Additional Information
+  researcherNotes      String?
+  weatherConditions    String?
+  tidalConditions      String?
+  
+  // Status and Verification
+  status               String   @default("DRAFT")
+  dataHash             String?  // IPFS hash of complete data
+  blockchainHash       String?  // Blockchain transaction hash
+  
+  // Verification Info
+  verifiedAt           DateTime?
+  verifiedBy           String?  // Admin user ID who verified
+  verificationNotes    String?
+  
+  // Timestamps
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
   // Relations
-  user User @relation(fields: [userId], references: [id])
-
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Indexes for better performance
+  @@index([userId])
+  @@index([status])
+  @@index([samplingId])
+  @@index([createdAt])
   @@map("conservation_records")
 }
 
+// ===== SUPPLY CHAIN MODULE MODELS =====
+
 model SupplyChainRecord {
-  id        String   @id @default(cuid())
-  productId String   @unique
-  userId    String
-  status    String   @default("DRAFT")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                   String   @id @default(cuid())
+  productId            String   @unique  // Unique product identifier
+  userId               String   // User who created this record
+  batchId              String?  // Batch identifier for grouping
+  
+  // Product Information
+  sourceType           String   // FARMED or WILD_CAPTURE
+  speciesName          String
+  productName          String?
+  productDescription   String?
+  
+  // Stage-specific Data (stored as JSON for flexibility)
+  hatcheryData         Json?    // For farmed products
+  growOutData          Json?    // For farmed products
+  harvestData          Json?    // For both farmed and wild
+  fishingData          Json?    // For wild capture
+  processingData       Json?    // Processing stage
+  distributionData     Json?    // Distribution/logistics
+  retailData           Json?    // Retail stage
+  
+  // Current Status
+  currentStage         String   // Current stage in the supply chain
+  qrCodeData           String?  // QR code content
+  
+  // File Management
+  fileHashes           String[] // IPFS hashes of uploaded files
+  
+  // Blockchain Integration
+  dataHash             String?  // IPFS hash of complete data
+  blockchainHash       String?  // Blockchain transaction hash
+  
+  // Status and Tracking
+  status               String   @default("ACTIVE")
+  isPublic             Boolean  @default(true)  // Can consumers trace this product?
+  
+  // Quality and Certifications
+  qualityGrade         String?
+  certifications       String[] // Array of certification names/numbers
+  testResults          Json?    // Quality test results
+  
+  // Timestamps
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
   // Relations
-  user User @relation(fields: [userId], references: [id])
-
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Indexes for better performance
+  @@index([userId])
+  @@index([productId])
+  @@index([batchId])
+  @@index([currentStage])
+  @@index([sourceType])
+  @@index([isPublic])
+  @@index([createdAt])
   @@map("supply_chain_records")
 }
 
@@ -145,7 +224,6 @@ enum UserRole {
   TRADER
   RETAILER
   CONSUMER
-  PENDING_UPGRADE
 }
 
 enum UserStatus {
@@ -157,8 +235,6 @@ enum UserStatus {
 
 enum ApplicationStatus {
   PENDING
-  UNDER_REVIEW
   APPROVED
   REJECTED
-  RESUBMITTED
 }
