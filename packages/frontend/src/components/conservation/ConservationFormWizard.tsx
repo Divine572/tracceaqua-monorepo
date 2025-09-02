@@ -17,7 +17,7 @@ import LabTestUploadStep from './steps/LabTestUploadStep'
 import ResultsVerificationStep from './steps/ResultsVerificationStep'
 
 // Form data interface
-interface ConservationFormData {
+export interface ConservationFormData {
   // Step 1: Location & Environmental Data
   location: {
     latitude?: number
