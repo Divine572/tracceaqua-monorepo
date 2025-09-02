@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { RoleApplicationsController } from './role-applications.controller';
 import { RoleApplicationsService } from './role-applications.service';
-import { IpfsModule } from '../files/files.module';
+import { FilesModule } from '../files/files.module';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [
     PrismaModule,
-    IpfsModule,
+    FilesModule,
     MulterModule.register({
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
@@ -41,3 +41,4 @@ import { PrismaModule } from '../prisma/prisma.module';
   exports: [RoleApplicationsService],
 })
 export class RoleApplicationsModule { }
+

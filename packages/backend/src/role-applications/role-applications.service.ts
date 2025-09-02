@@ -8,13 +8,13 @@ import { ReviewApplicationDto } from './dto/review-application.dto';
 import { UpdateApplicationDto } from './dto/update-role-application.dto';
 
 
-import { IpfsService } from '../files/files.service';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class RoleApplicationsService {
     constructor(
         private prisma: PrismaService,
-        private ipfsService: IpfsService,
+        private filesService: FilesService,
     ) { }
 
     /**
@@ -70,7 +70,7 @@ export class RoleApplicationsService {
             try {
                 documentHashes = await Promise.all(
                     documents.map(async (file) => {
-                        const uploadResult = await this.ipfsService.uploadFile(file);
+                        const uploadResult = await this.filesService.uploadFile(file);
                         return uploadResult.hash;
                     })
                 );
@@ -313,7 +313,7 @@ export class RoleApplicationsService {
             try {
                 newDocumentHashes = await Promise.all(
                     documents.map(async (file) => {
-                        const uploadResult = await this.ipfsService.uploadFile(file);
+                        const uploadResult = await this.filesService.uploadFile(file);
                         return uploadResult.hash;
                     })
                 );
