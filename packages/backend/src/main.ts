@@ -24,6 +24,9 @@ async function bootstrap() {
 
 
 
+
+
+
   // Enable CORS
   app.enableCors({
     origin: corsOrigin,
@@ -49,6 +52,8 @@ async function bootstrap() {
       },
     }),
   );
+
+
 
   // Setup Swagger documentation
   if (environment === 'development') {
