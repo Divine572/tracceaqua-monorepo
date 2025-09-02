@@ -25,16 +25,16 @@ import {
     ApiQuery,
     ApiBody,
 } from '@nestjs/swagger';
-import { IpfsService } from './ipfs.service';
+import { FilesService } from './files.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FileUploadResponseDto, BatchFileUploadDto } from './dto/upload-file.dto';
 
 @ApiTags('File Management')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('ipfs')
-export class IpfsController {
-    constructor(private readonly ipfsService: IpfsService) { }
+@Controller('files')
+export class FilesController {
+    constructor(private readonly filesService: FilesService) { }
 
     @Post('upload')
     @UseInterceptors(FileInterceptor('files'))
@@ -79,7 +79,7 @@ export class IpfsController {
             throw new BadRequestException('No file provided');
         }
 
-        return this.ipfsService.uploadFile(file, recordId, category);
+        return this.filesService.uploadFile(file, recordId, category);
     }
 
     @Post('upload/batch')
@@ -98,7 +98,7 @@ export class IpfsController {
         @UploadedFiles() files: Express.Multer.File[],
         @Body() batchData: BatchFileUploadDto,
     ): Promise<FileUploadResponseDto[]> {
-        return this.ipfsService.uploadFiles(files, batchData);
+        return this.filesService.uploadFiles(files, batchData);
     }
 
     @Post('upload/json')
@@ -118,7 +118,7 @@ export class IpfsController {
             recordId?: string
         }
     ): Promise<FileUploadResponseDto> {
-        return this.ipfsService.uploadJson(
+        return this.filesService.uploadJson(
             data.data,
             data.filename || 'data.json',
             data.recordId
@@ -139,7 +139,7 @@ export class IpfsController {
         @Query('category') category?: string,
     ): Promise<{ files: any[], hasMore: boolean }> {
         const limitNum = Math.min(parseInt(limit) || 10, 100);
-        return this.ipfsService.listFiles(limitNum, recordId, category);
+        return this.filesService.listFiles(limitNum, recordId, category);
     }
 
     @Get('stats')
@@ -148,7 +148,7 @@ export class IpfsController {
         description: 'Get file storage usage statistics.',
     })
     async getStorageStats(): Promise<any> {
-        return this.ipfsService.getStorageStats();
+        return this.filesService.getStorageStats();
     }
 
     @Get(':hash')
@@ -158,7 +158,7 @@ export class IpfsController {
     })
     @ApiParam({ name: 'hash', description: 'IPFS hash of the file' })
     async getFileInfo(@Param('hash') hash: string): Promise<any> {
-        return this.ipfsService.getFileInfo(hash);
+        return this.filesService.getFileInfo(hash);
     }
 
     @Get(':hash/url')
@@ -168,7 +168,7 @@ export class IpfsController {
     })
     @ApiParam({ name: 'hash', description: 'IPFS hash of the file' })
     async getFileUrl(@Param('hash') hash: string): Promise<{ url: string }> {
-        return { url: this.ipfsService.getPublicUrl(hash) };
+        return { url: this.filesService.getPublicUrl(hash) };
     }
 
     @Delete(':hash')
@@ -179,6 +179,6 @@ export class IpfsController {
     @ApiParam({ name: 'hash', description: 'IPFS hash of the file' })
     @ApiResponse({ status: 204, description: 'File deleted successfully' })
     async deleteFile(@Param('hash') hash: string): Promise<void> {
-        return this.ipfsService.deleteFile(hash);
+        return this.filesService.deleteFile(hash);
     }
 }

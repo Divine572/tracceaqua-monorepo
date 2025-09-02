@@ -6,57 +6,41 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
-import { ApiResponseDto } from '../dto/response.dto';
+import { Request, Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
-  constructor(private configService: ConfigService) {}
-
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest();
+    const request = ctx.getRequest<Request>();
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
-    let error = 'Unknown error';
+    const status =
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const exceptionResponse = exception.getResponse();
-      
-      if (typeof exceptionResponse === 'string') {
-        message = exceptionResponse;
-        error = exceptionResponse;
-      } else if (typeof exceptionResponse === 'object') {
-        message = (exceptionResponse as any).message || exception.message;
-        error = (exceptionResponse as any).error || exception.name;
-      }
-    } else if (exception instanceof Error) {
-      message = exception.message;
-      error = exception.name;
-    }
+    const message =
+      exception instanceof HttpException
+        ? exception.getResponse()
+        : 'Internal server error';
 
     // Log the error
-    const logMessage = `${request.method} ${request.url} - ${status} - ${message}`;
-    if (status >= 500) {
-      this.logger.error(logMessage, exception);
-    } else {
-      this.logger.warn(logMessage);
-    }
+    this.logger.error(
+      `HTTP Status: ${status} Error Message: ${JSON.stringify(message)}`,
+      exception instanceof Error ? exception.stack : 'No stack trace',
+    );
 
-    // Create error response
-    const errorResponse = new ApiResponseDto(false, message, null, error);
-
-    // Add stack trace in development
-    if (this.configService.get<string>('app.environment') === 'development' && exception instanceof Error) {
-      (errorResponse as any).stack = exception.stack;
-    }
-
-    response.status(status).json(errorResponse);
+    // Send structured error response
+    response.status(status).json({
+      statusCode: status,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      message: typeof message === 'string' ? message : (message as any).message || message,
+      error: status >= 500 ? 'Internal Server Error' : undefined,
+    });
   }
 }

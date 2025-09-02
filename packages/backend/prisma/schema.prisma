@@ -1,5 +1,4 @@
 
-
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -33,6 +32,7 @@ model User {
   // Conservation & Supply Chain Relations
   conservationRecords  ConservationRecord[]
   supplyChainRecords   SupplyChainRecord[]
+  stageHistoryEntries  SupplyChainStageHistory[]
 
   @@map("users")
 }
@@ -88,7 +88,6 @@ model RoleApplication {
 
   @@map("role_applications")
 }
-
 
 model AdminAction {
   id          String   @id @default(cuid())
@@ -200,7 +199,8 @@ model SupplyChainRecord {
   updatedAt            DateTime @updatedAt
   
   // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stageHistory SupplyChainStageHistory[]   // NEW: Stage history relation
   
   // Indexes for better performance
   @@index([userId])
@@ -211,6 +211,45 @@ model SupplyChainRecord {
   @@index([isPublic])
   @@index([createdAt])
   @@map("supply_chain_records")
+}
+
+
+model SupplyChainStageHistory {
+  id                   String   @id @default(cuid())
+  productId            String   // Reference to supply chain record
+  stage                String   // Stage name (HATCHERY, PROCESSING, etc.)
+  previousStage        String?  // Previous stage (for validation)
+  updatedBy            String   // User who made the update
+  updatedAt            DateTime @default(now())
+  notes                String?  // Optional notes about the transition
+  
+  // Stage-specific data snapshot (what changed)
+  stageData            Json?    // Data specific to this stage
+  
+  // File attachments for this stage update
+  fileHashes           String[] // IPFS hashes of files uploaded for this stage
+  
+  // Location data (if applicable)
+  location             String?  // Where this stage update occurred
+  
+  // Quality metrics for this stage
+  qualityGrade         String?  // Quality grade at this stage
+  testResults          Json?    // Any test results for this stage
+  
+  // Blockchain tracking
+  blockchainHash       String?  // Transaction hash for this stage update
+  dataHash             String?  // Hash of the stage data
+  
+  // Relations
+  supplyChainRecord SupplyChainRecord @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  user              User              @relation(fields: [updatedBy], references: [id])
+  
+  // Indexes for better performance
+  @@index([productId])
+  @@index([updatedAt])
+  @@index([stage])
+  @@index([updatedBy])
+  @@map("supply_chain_stage_history")
 }
 
 // ===== ENUMS =====

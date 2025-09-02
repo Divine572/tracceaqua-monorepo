@@ -8,7 +8,7 @@ import { ReviewApplicationDto } from './dto/review-application.dto';
 import { UpdateApplicationDto } from './dto/update-role-application.dto';
 
 
-import { IpfsService } from '../ipfs/ipfs.service';
+import { IpfsService } from '../files/files.service';
 
 @Injectable()
 export class RoleApplicationsService {

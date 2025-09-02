@@ -4,8 +4,8 @@ import { PinataSDK } from 'pinata';
 import { FileUploadResponseDto, BatchFileUploadDto } from './dto/upload-file.dto';
 
 @Injectable()
-export class IpfsService {
-    private readonly logger = new Logger(IpfsService.name);
+export class FilesService {
+    private readonly logger = new Logger(FilesService.name);
     private readonly pinata: PinataSDK;
     private readonly gatewayUrl: string;
 

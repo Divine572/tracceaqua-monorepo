@@ -7,10 +7,18 @@ import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-// These will be added in later stages
+
+// Feature modules (Phase 1)
 import { RoleApplicationsModule } from './role-applications/role-applications.module';
+import { ConservationModule } from './conservation/conservation.module';
+import { SupplyChainModule } from './supply-chain/supply-chain.module';
+import { FilesModule } from './files/files.module';
+// import { BlockchainModule } from './blockchain/blockchain.module'; 
+
+// Future modules (Phase 2+)
 // import { AdminModule } from './admin/admin.module';
-// import { UploadModule } from './upload/upload.module';
+// import { NotificationsModule } from './notifications/notifications.module';
+// import { AnalyticsModule } from './analytics/analytics.module';
 
 // Guards and interceptors
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -27,8 +35,6 @@ import { uploadConfig } from './config/upload.config';
 // Main app components
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { IpfsModule } from './ipfs/ipfs.module';
-import { ConservationModule } from './conservation/conservation.module';
 
 @Module({
   imports: [
@@ -39,7 +45,7 @@ import { ConservationModule } from './conservation/conservation.module';
       envFilePath: ['.env.local', '.env'],
     }),
 
-    // Rate limiting
+    // Rate limiting 
     ThrottlerModule.forRoot([
       {
         name: 'short',
@@ -62,30 +68,34 @@ import { ConservationModule } from './conservation/conservation.module';
     PrismaModule,
     AuthModule,
     UsersModule,
-    IpfsModule,
-    // These will be added in later stages
+
+    // Phase 1 Feature modules (COMPLETED)
     RoleApplicationsModule,
     ConservationModule,
+    SupplyChainModule,
+    FilesModule,
+    // BlockchainModule, 
+
+    // Phase 2+ modules (Future implementation)
     // AdminModule,
-    // UploadModule,
+    // NotificationsModule,
+    // AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
 
-    // Global guards
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
 
-    // Global exception filter
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
     },
 
-    // Global interceptors
+    // Global interceptors (Your existing setup)
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
@@ -97,6 +107,3 @@ import { ConservationModule } from './conservation/conservation.module';
   ],
 })
 export class AppModule { }
-
-
-

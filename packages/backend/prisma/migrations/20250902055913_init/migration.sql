@@ -5,7 +5,7 @@ CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'RESEARCHER', 'FARMER', 'FISHERMAN', 'P
 CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'PENDING', 'SUSPENDED', 'REJECTED');
 
 -- CreateEnum
-CREATE TYPE "ApplicationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'UNDER_REVIEW');
+CREATE TYPE "ApplicationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -131,6 +131,26 @@ CREATE TABLE "supply_chain_records" (
     CONSTRAINT "supply_chain_records_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "supply_chain_stage_history" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "stage" TEXT NOT NULL,
+    "previousStage" TEXT,
+    "updatedBy" TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "notes" TEXT,
+    "stageData" JSONB,
+    "fileHashes" TEXT[],
+    "location" TEXT,
+    "qualityGrade" TEXT,
+    "testResults" JSONB,
+    "blockchainHash" TEXT,
+    "dataHash" TEXT,
+
+    CONSTRAINT "supply_chain_stage_history_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_address_key" ON "users"("address");
 
@@ -179,6 +199,18 @@ CREATE INDEX "supply_chain_records_isPublic_idx" ON "supply_chain_records"("isPu
 -- CreateIndex
 CREATE INDEX "supply_chain_records_createdAt_idx" ON "supply_chain_records"("createdAt");
 
+-- CreateIndex
+CREATE INDEX "supply_chain_stage_history_productId_idx" ON "supply_chain_stage_history"("productId");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_stage_history_updatedAt_idx" ON "supply_chain_stage_history"("updatedAt");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_stage_history_stage_idx" ON "supply_chain_stage_history"("stage");
+
+-- CreateIndex
+CREATE INDEX "supply_chain_stage_history_updatedBy_idx" ON "supply_chain_stage_history"("updatedBy");
+
 -- AddForeignKey
 ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -199,3 +231,9 @@ ALTER TABLE "conservation_records" ADD CONSTRAINT "conservation_records_userId_f
 
 -- AddForeignKey
 ALTER TABLE "supply_chain_records" ADD CONSTRAINT "supply_chain_records_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "supply_chain_stage_history" ADD CONSTRAINT "supply_chain_stage_history_productId_fkey" FOREIGN KEY ("productId") REFERENCES "supply_chain_records"("productId") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "supply_chain_stage_history" ADD CONSTRAINT "supply_chain_stage_history_updatedBy_fkey" FOREIGN KEY ("updatedBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

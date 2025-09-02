@@ -9,7 +9,7 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { RoleApplicationsController } from '../../role-applications/role-applications.controller';
 import { RoleApplicationsService } from '../../role-applications/role-applications.service';
-import { IpfsModule } from '../../ipfs/ipfs.module';
+import { IpfsModule } from '../../files/files.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 
