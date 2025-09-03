@@ -1,477 +1,442 @@
-// packages/frontend/src/app/(dashboard)/scan/page.tsx
-'use client'
+"use client"
 
-import { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { 
   QrCode, 
   Camera, 
-  Upload, 
-  Type, 
-  AlertCircle, 
-  CheckCircle2,
-  Loader2,
-  X,
-  RefreshCw
+  Keyboard,
+  Search,
+  History,
+  ArrowRight,
+  ExternalLink,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Fish
 } from 'lucide-react'
+import { QRScanner } from '@/components/qr-code/qr-scanner'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { validateQRCode, getBasicProductInfo } from '@/lib/traceability'
 
-interface ScanResult {
+interface ScanHistory {
   productId: string
-  productName: string
-  batchNumber: string
-  origin: string
-  harvestDate: string
-  status: 'valid' | 'invalid' | 'expired'
+  productName?: string
+  speciesName?: string
+  sourceType?: 'FARMED' | 'WILD_CAPTURE'
+  scannedAt: Date
+  location?: string
 }
 
 export default function ScanPage() {
-  const router = useRouter()
-  const [activeTab, setActiveTab] = useState('camera')
-  const [isScanning, setIsScanning] = useState(false)
+  const [activeTab, setActiveTab] = useState('scanner')
   const [manualCode, setManualCode] = useState('')
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'pending'>('pending')
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isValidating, setIsValidating] = useState(false)
+  const [scanHistory, setScanHistory] = useState<ScanHistory[]>([])
+  const [lastScanResult, setLastScanResult] = useState<any>(null)
+  const router = useRouter()
 
-  // Initialize camera when camera tab is active
-  useEffect(() => {
-    if (activeTab === 'camera') {
-      initializeCamera()
-    } else {
-      stopCamera()
+  // Load scan history on component mount
+  React.useEffect(() => {
+    const saved = localStorage.getItem('tracceaqua-scan-history')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setScanHistory(parsed.map((item: any) => ({
+          ...item,
+          scannedAt: new Date(item.scannedAt)
+        })).slice(0, 10)) // Keep last 10 scans
+      } catch (e) {
+        console.error('Failed to load scan history:', e)
+      }
     }
+  }, [])
 
-    return () => stopCamera()
-  }, [activeTab])
-
-  const initializeCamera = async () => {
+  const addToScanHistory = async (productId: string) => {
     try {
-      setError(null)
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment', // Use back camera
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
-      })
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
+      // Get basic product info for history
+      const productInfo = await getBasicProductInfo(productId)
+
+      const newScan: ScanHistory = {
+        productId,
+        productName: productInfo.productName,
+        speciesName: productInfo.speciesName,
+        sourceType: productInfo.sourceType,
+        scannedAt: new Date(),
+        location: 'Manual Entry'
       }
       
-      setCameraPermission('granted')
-    } catch (err) {
-      console.error('Camera access error:', err)
-      setCameraPermission('denied')
-      setError('Camera access denied. Please allow camera permissions and try again.')
-    }
-  }
-
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks()
-      tracks.forEach(track => track.stop())
-      videoRef.current.srcObject = null
-    }
-  }
-
-  const captureAndScan = async () => {
-    if (!videoRef.current || !canvasRef.current) return
-
-    setIsScanning(true)
-    setError(null)
-
-    try {
-      const canvas = canvasRef.current
-      const video = videoRef.current
-      const context = canvas.getContext('2d')
-
-      if (!context) throw new Error('Canvas context not available')
-
-      // Set canvas size to video size
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-
-      // Draw video frame to canvas
-      context.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-      // Simulate QR code scanning (replace with actual QR scanning library)
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      // Mock scan result
-      const mockResult: ScanResult = {
-        productId: 'TRA-2024-001234',
-        productName: 'Fresh Atlantic Salmon',
-        batchNumber: 'LAG-2024-0156',
-        origin: 'Lagos Fish Farm, Nigeria',
-        harvestDate: '2024-08-10',
-        status: 'valid'
+      const updatedHistory = [newScan, ...scanHistory.slice(0, 9)]
+      setScanHistory(updatedHistory)
+      localStorage.setItem('tracceaqua-scan-history', JSON.stringify(updatedHistory))
+    } catch (error) {
+      // Still add to history even if we can't get product info
+      const newScan: ScanHistory = {
+        productId,
+        scannedAt: new Date(),
+        location: 'Manual Entry'
       }
-
-      setScanResult(mockResult)
-    } catch (err) {
-      setError('Failed to scan QR code. Please try again.')
-    } finally {
-      setIsScanning(false)
+      
+      const updatedHistory = [newScan, ...scanHistory.slice(0, 9)]
+      setScanHistory(updatedHistory)
+      localStorage.setItem('tracceaqua-scan-history', JSON.stringify(updatedHistory))
     }
   }
 
-  const handleManualScan = async () => {
+  const handleManualTrace = async () => {
     if (!manualCode.trim()) {
-      setError('Please enter a product code')
+      toast.error('Please enter a product code or URL')
       return
     }
 
-    setIsScanning(true)
-    setError(null)
+    setIsValidating(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      let productId = manualCode.trim()
 
-      // Mock result based on code
-      const mockResult: ScanResult = {
-        productId: manualCode,
-        productName: 'Fresh Tilapia',
-        batchNumber: 'ABJ-2024-0089',
-        origin: 'Abuja Aquaculture Center',
-        harvestDate: '2024-08-08',
-        status: manualCode.includes('EXP') ? 'expired' : 'valid'
+      // Check if it's a URL
+      if (manualCode.includes('trace/')) {
+        const validation = validateQRCode(manualCode)
+        if (validation.isValid && validation.productId) {
+          productId = validation.productId
+        } else {
+          throw new Error('Invalid trace URL format')
+        }
       }
 
-      setScanResult(mockResult)
-    } catch (err) {
-      setError('Product not found. Please check the code and try again.')
+      // Validate product exists
+      await getBasicProductInfo(productId)
+
+      // Add to history
+      await addToScanHistory(productId)
+
+      // Navigate to trace page
+      router.push(`/trace/${productId}`)
+    } catch (error) {
+      console.error('Manual trace error:', error)
+      toast.error('Product not found or invalid code format')
     } finally {
-      setIsScanning(false)
+      setIsValidating(false)
     }
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const handleQRScan = async (productId: string, fullUrl: string) => {
+    try {
+      // Add to history with QR scan location
+      const productInfo = await getBasicProductInfo(productId)
 
-    setIsScanning(true)
-    setError(null)
-
-    // Simulate file processing
-    setTimeout(() => {
-      const mockResult: ScanResult = {
-        productId: 'TRA-2024-005678',
-        productName: 'Frozen Shrimp',
-        batchNumber: 'PHC-2024-0234',
-        origin: 'Port Harcourt Fisheries',
-        harvestDate: '2024-08-05',
-        status: 'valid'
+      const newScan: ScanHistory = {
+        productId,
+        productName: productInfo.productName,
+        speciesName: productInfo.speciesName,
+        sourceType: productInfo.sourceType,
+        scannedAt: new Date(),
+        location: 'QR Scan'
       }
 
-      setScanResult(mockResult)
-      setIsScanning(false)
-    }, 2000)
-  }
+      const updatedHistory = [newScan, ...scanHistory.slice(0, 9)]
+      setScanHistory(updatedHistory)
+      localStorage.setItem('tracceaqua-scan-history', JSON.stringify(updatedHistory))
 
-  const viewFullTrace = () => {
-    if (scanResult) {
-      router.push(`/trace/${scanResult.productId}`)
+      setLastScanResult(productInfo)
+
+      // Auto-navigate after brief delay to show scan result
+      setTimeout(() => {
+        router.push(`/trace/${productId}`)
+      }, 1500)
+    } catch (error) {
+      console.error('QR scan processing error:', error)
     }
   }
 
-  const resetScan = () => {
-    setScanResult(null)
-    setError(null)
-    setManualCode('')
-  }
-
-  if (scanResult) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Scan Result</h1>
-          <Button variant="outline" onClick={resetScan}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Scan Again
-          </Button>
+  const renderScanHistory = () => {
+    if (scanHistory.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>No recent scans</p>
+          <p className="text-sm">Your scan history will appear here</p>
         </div>
+      )
+    }
 
-        <Card className={`border-2 ${
-          scanResult.status === 'valid' ? 'border-green-200 bg-green-50' :
-          scanResult.status === 'expired' ? 'border-red-200 bg-red-50' :
-          'border-yellow-200 bg-yellow-50'
-        }`}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {scanResult.status === 'valid' ? (
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
-              ) : (
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              )}
-              {scanResult.productName}
-            </CardTitle>
-            <CardDescription>
-              Product ID: {scanResult.productId}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Batch Number</p>
-                <p className="text-sm">{scanResult.batchNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Origin</p>
-                <p className="text-sm">{scanResult.origin}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Harvest Date</p>
-                <p className="text-sm">{scanResult.harvestDate}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Status</p>
-                <p className={`text-sm font-medium ${
-                  scanResult.status === 'valid' ? 'text-green-600' :
-                  scanResult.status === 'expired' ? 'text-red-600' :
-                  'text-yellow-600'
-                }`}>
-                  {scanResult.status.toUpperCase()}
-                </p>
-              </div>
-            </div>
+    return (
+      <div className="space-y-3">
+        {scanHistory.map((scan, index) => (
+          <Card
+            key={`${scan.productId}-${scan.scannedAt.getTime()}`}
+            className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-blue-500"
+            onClick={() => router.push(`/trace/${scan.productId}`)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Fish className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-sm">
+                      {scan.productName || 'Unknown Product'}
+                    </span>
+                    {scan.sourceType && (
+                      <Badge variant="outline" className="text-xs">
+                        {scan.sourceType === 'FARMED' ? 'Aquaculture' : 'Wild Capture'}
+                      </Badge>
+                    )}
+                  </div>
 
-            <div className="pt-4">
-              <Button onClick={viewFullTrace} className="w-full">
-                View Complete Traceability Journey
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="font-mono">{scan.productId}</span>
+                    <span>{scan.scannedAt.toLocaleDateString()}</span>
+                    <span>{scan.location}</span>
+                  </div>
+
+                  {scan.speciesName && (
+                    <p className="text-sm text-muted-foreground italic mt-1">
+                      {scan.speciesName}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    #{index + 1}
+                  </Badge>
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <QrCode className="w-6 h-6 text-blue-600" />
-          Scan Product
+    <div className="container max-w-4xl mx-auto p-6 space-y-6">
+      {/* Page Header */}
+      <div className="text-center space-y-4">
+        <h1 className="text-3xl font-bold text-blue-900">
+          Trace Seafood Products
         </h1>
-        <p className="text-gray-600">
-          Scan a QR code or enter a product code to trace its journey
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          Scan QR codes or enter product codes manually to trace the complete journey
+          of seafood products from source to your plate.
         </p>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+      {/* Last Scan Result */}
+      {lastScanResult && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>Successfully scanned:</strong> {lastScanResult.productName}
+            ({lastScanResult.speciesName}) - Redirecting to trace page...
+          </AlertDescription>
         </Alert>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* Main Scanning Interface */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="camera">
-            <Camera className="w-4 h-4 mr-2" />
-            Camera
+          <TabsTrigger value="scanner" className="flex items-center gap-2">
+            <Camera className="h-4 w-4" />
+            QR Scanner
           </TabsTrigger>
-          <TabsTrigger value="upload">
-            <Upload className="w-4 h-4 mr-2" />
-            Upload
+          <TabsTrigger value="manual" className="flex items-center gap-2">
+            <Keyboard className="h-4 w-4" />
+            Manual Entry
           </TabsTrigger>
-          <TabsTrigger value="manual">
-            <Type className="w-4 h-4 mr-2" />
-            Manual
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Recent Scans
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="camera" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Camera Scanner</CardTitle>
-              <CardDescription>
-                Point your camera at a QR code to scan it
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="relative">
-                <video
-                  ref={videoRef}
-                  className="w-full max-w-md mx-auto rounded-lg bg-gray-100"
-                  autoPlay
-                  playsInline
-                  muted
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="hidden"
-                />
-                
-                {cameraPermission === 'denied' && (
-                  <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <div className="text-center space-y-2">
-                      <Camera className="w-12 h-12 text-gray-400 mx-auto" />
-                      <p className="text-sm text-gray-600">Camera access required</p>
-                      <Button onClick={initializeCamera} size="sm">
-                        Enable Camera
-                      </Button>
-                    </div>
-                  </div>
-                )}
+        {/* QR Scanner Tab */}
+        <TabsContent value="scanner" className="space-y-6">
+          <QRScanner
+            onScan={handleQRScan}
+            onError={(error) => toast.error(error)}
+            className="mx-auto"
+          />
 
-                {isScanning && (
-                  <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                    <div className="text-center text-white space-y-2">
-                      <Loader2 className="w-8 h-8 animate-spin mx-auto" />
-                      <p className="text-sm">Scanning...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="text-center">
-                <Button 
-                  onClick={captureAndScan}
-                  disabled={isScanning || cameraPermission !== 'granted'}
-                  size="lg"
-                >
-                  {isScanning ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Scanning...
-                    </>
-                  ) : (
-                    <>
-                      <QrCode className="w-4 h-4 mr-2" />
-                      Scan QR Code
-                    </>
-                  )}
-                </Button>
+          {/* Scanner Instructions */}
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-6">
+              <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                How to Scan QR Codes
+              </h3>
+              <div className="space-y-2 text-sm text-blue-800">
+                <p>📱 <strong>On Mobile:</strong> Point your device's camera at the QR code</p>
+                <p>💻 <strong>On Desktop:</strong> Use your webcam or external camera</p>
+                <p>💡 <strong>Tips:</strong> Ensure good lighting and hold steady for best results</p>
+                <p>✅ <strong>Look for:</strong> TracceAqua QR codes on product packaging</p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="upload" className="space-y-4">
+        {/* Manual Entry Tab */}
+        <TabsContent value="manual" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Upload QR Code Image</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Keyboard className="h-5 w-5" />
+                Enter Product Code or URL
+              </CardTitle>
               <CardDescription>
-                Upload an image containing a QR code
+                Manually enter a product ID or paste a trace URL to view product journey
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
-                <div className="text-center space-y-4">
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto" />
-                  <div>
-                    <p className="text-sm text-gray-600">
-                      Click to upload or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, or WEBP (max 5MB)
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="qr-upload"
+              <div>
+                <Label htmlFor="manual-code">Product Code or Trace URL</Label>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    id="manual-code"
+                    placeholder="e.g. FISH-2024-001 or https://tracceaqua.com/trace/FISH-2024-001"
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleManualTrace()}
+                    className="flex-1"
                   />
-                  <label htmlFor="qr-upload">
-                    <Button variant="outline" asChild>
-                      <span>Choose File</span>
-                    </Button>
-                  </label>
+                  <Button
+                    onClick={handleManualTrace}
+                    disabled={isValidating || !manualCode.trim()}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isValidating ? (
+                      <Clock className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Search className="h-4 w-4 mr-2" />
+                    )}
+                    {isValidating ? 'Validating...' : 'Trace'}
+                  </Button>
                 </div>
               </div>
 
-              {isScanning && (
-                <div className="text-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Processing image...</p>
+              {/* Format Examples */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-sm mb-2">Accepted Formats:</h4>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p>• Product ID: <code className="text-xs bg-white px-1 rounded">FISH-2024-001</code></p>
+                  <p>• Trace URL: <code className="text-xs bg-white px-1 rounded">https://tracceaqua.com/trace/FISH-2024-001</code></p>
+                  <p>• Short URL: <code className="text-xs bg-white px-1 rounded">tracceaqua.com/trace/FISH-2024-001</code></p>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div>
+                <Label className="text-sm text-muted-foreground">Quick Actions</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setManualCode('DEMO-FISH-001')}
+                  >
+                    Try Demo Product
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.readText().then(text => {
+                        if (text.includes('trace/') || text.match(/^[A-Z0-9-]+$/)) {
+                          setManualCode(text)
+                          toast.success('Pasted from clipboard')
+                        } else {
+                          toast.error('No valid code found in clipboard')
+                        }
+                      }).catch(() => {
+                        toast.error('Could not read clipboard')
+                      })
+                    }}
+                  >
+                    Paste from Clipboard
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Scan History Tab */}
+        <TabsContent value="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Recent Scans
+              </CardTitle>
+              <CardDescription>
+                Your recently scanned products (stored locally on your device)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {renderScanHistory()}
+
+              {scanHistory.length > 0 && (
+                <div className="mt-6 pt-6 border-t">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {scanHistory.length} recent scan{scanHistory.length > 1 ? 's' : ''}
+                    </p>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setScanHistory([])
+                        localStorage.removeItem('tracceaqua-scan-history')
+                        toast.success('Scan history cleared')
+                      }}
+                    >
+                      Clear History
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="manual" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Enter Product Code</CardTitle>
-              <CardDescription>
-                Manually enter the product code if scanning is not available
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  placeholder="Enter product code (e.g., TRA-2024-001234)"
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  className="text-center text-lg font-mono"
-                />
-                <p className="text-xs text-gray-500 text-center">
-                  Product codes are usually found printed below the QR code
-                </p>
-              </div>
-
-              <Button 
-                onClick={handleManualScan}
-                disabled={isScanning || !manualCode.trim()}
-                className="w-full"
-                size="lg"
-              >
-                {isScanning ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Looking up...
-                  </>
-                ) : (
-                  <>
-                    <Type className="w-4 h-4 mr-2" />
-                    Trace Product
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
-      {/* Instructions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">How to Scan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3 text-sm">
-            <div className="text-center space-y-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-sm font-bold text-blue-600">1</span>
+      {/* Public Statistics */}
+      <Card className="bg-gradient-to-r from-blue-50 to-green-50">
+        <CardContent className="p-6">
+          <div className="text-center space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              TracceAqua Impact
+            </h3>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">1,250+</div>
+                <p className="text-muted-foreground">Products Traced</p>
               </div>
-              <p className="font-medium">Find the QR code on your seafood product packaging</p>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-sm font-bold text-blue-600">2</span>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">8,500+</div>
+                <p className="text-muted-foreground">Journey Stages</p>
               </div>
-              <p className="font-medium">Use your camera to scan the code or upload an image</p>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-sm font-bold text-blue-600">3</span>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">98.5%</div>
+                <p className="text-muted-foreground">Verification Rate</p>
               </div>
-              <p className="font-medium">View the complete traceability journey</p>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-amber-600">14</div>
+                <p className="text-muted-foreground">Avg. Journey Days</p>
+              </div>
             </div>
+
+            <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+              Join thousands of consumers making informed choices about sustainable seafood
+            </p>
           </div>
         </CardContent>
       </Card>

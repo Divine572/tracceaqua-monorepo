@@ -322,6 +322,7 @@ export default function ConservationFormWizard({
             <Progress value={progress} className="h-2" />
           </div>
 
+
           {/* Step indicators */}
           <div className="flex items-center justify-between">
             {steps.map((step, index) => {
