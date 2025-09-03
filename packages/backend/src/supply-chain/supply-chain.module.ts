@@ -1,13 +1,27 @@
+import { PrismaModule } from './../prisma/prisma.module';
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { SupplyChainController } from './supply-chain.controller';
 import { SupplyChainService } from './supply-chain.service';
-import { FilesService } from 'src/files/files.service';
+import { ConsumerFeedbackService } from './consumer-feedback.service';
+import { QRCodeService } from './qr-code.service';
+import { PublicStatisticsService } from './public-statistics.service';
+
 
 @Module({
+  imports: [ConfigModule, PrismaModule],
   controllers: [SupplyChainController],
-  providers: [SupplyChainService, FilesService],
-
+  providers: [
+    SupplyChainService,
+    ConsumerFeedbackService,
+    QRCodeService,
+    PublicStatisticsService,
+  ],
+  exports: [
+    SupplyChainService,
+    ConsumerFeedbackService,
+    QRCodeService,
+    PublicStatisticsService,
+  ],
 })
-export class SupplyChainModule {}
-
-
+export class SupplyChainModule { }

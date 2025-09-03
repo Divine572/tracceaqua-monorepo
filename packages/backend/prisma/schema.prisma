@@ -200,7 +200,9 @@ model SupplyChainRecord {
   
   // Relations
   user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stageHistory SupplyChainStageHistory[]   // NEW: Stage history relation
+  stageHistory SupplyChainStageHistory[]   
+  consumerFeedback ConsumerFeedback[]
+  traces           ProductTrace[]
   
   // Indexes for better performance
   @@index([userId])
@@ -251,6 +253,64 @@ model SupplyChainStageHistory {
   @@index([updatedBy])
   @@map("supply_chain_stage_history")
 }
+
+
+
+
+model ConsumerFeedback {
+  id          String   @id @default(cuid())
+  productId   String
+  rating      Int      @db.SmallInt // 1-5 rating
+  comment     String?  @db.Text
+  email       String?
+  wouldBuyAgain Boolean?
+  location    String?
+  ipAddress   String?
+  userAgent   String?
+  
+  // Relations
+  product     SupplyChainRecord @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("consumer_feedback")
+}
+
+model ProductTrace {
+  id        String   @id @default(cuid())
+  productId String
+  ipAddress String?
+  userAgent String?
+  location  String?
+  referer   String?
+  
+  // Relations  
+  product   SupplyChainRecord @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("product_traces")
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ===== ENUMS =====
 

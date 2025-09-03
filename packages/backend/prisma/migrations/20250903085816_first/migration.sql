@@ -151,6 +151,36 @@ CREATE TABLE "supply_chain_stage_history" (
     CONSTRAINT "supply_chain_stage_history_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "consumer_feedback" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "rating" SMALLINT NOT NULL,
+    "comment" TEXT,
+    "email" TEXT,
+    "wouldBuyAgain" BOOLEAN,
+    "location" TEXT,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "consumer_feedback_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "product_traces" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "location" TEXT,
+    "referer" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "product_traces_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_address_key" ON "users"("address");
 
@@ -237,3 +267,9 @@ ALTER TABLE "supply_chain_stage_history" ADD CONSTRAINT "supply_chain_stage_hist
 
 -- AddForeignKey
 ALTER TABLE "supply_chain_stage_history" ADD CONSTRAINT "supply_chain_stage_history_updatedBy_fkey" FOREIGN KEY ("updatedBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "consumer_feedback" ADD CONSTRAINT "consumer_feedback_productId_fkey" FOREIGN KEY ("productId") REFERENCES "supply_chain_records"("productId") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "product_traces" ADD CONSTRAINT "product_traces_productId_fkey" FOREIGN KEY ("productId") REFERENCES "supply_chain_records"("productId") ON DELETE CASCADE ON UPDATE CASCADE;

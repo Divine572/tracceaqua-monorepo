@@ -73,6 +73,8 @@ async function bootstrap() {
         'JWT-auth',
       )
       .addTag('Authentication', 'User authentication and authorization')
+      .addTag('Supply Chain', 'Seafood supply chain traceability endpoints')
+      .addTag('Consumer', 'Public consumer-facing endpoints')
       .addTag('Users', 'User management operations')
       .addTag('Role Applications', 'Professional role application system')
       .addTag('Admin', 'Administrative operations')
