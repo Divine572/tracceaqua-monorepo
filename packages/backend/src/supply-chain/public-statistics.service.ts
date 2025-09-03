@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from './../prisma/prisma.service';
 import { PublicStatisticsDto } from './dto/public-statistics.dto';
 
+
+
+
 @Injectable()
 export class PublicStatisticsService {
   constructor(private prisma: PrismaService) {}

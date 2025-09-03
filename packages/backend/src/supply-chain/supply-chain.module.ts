@@ -1,4 +1,5 @@
 import { PrismaModule } from './../prisma/prisma.module';
+import { FilesModule } from './../files/files.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SupplyChainController } from './supply-chain.controller';
@@ -8,8 +9,9 @@ import { QRCodeService } from './qr-code.service';
 import { PublicStatisticsService } from './public-statistics.service';
 
 
+
 @Module({
-  imports: [ConfigModule, PrismaModule],
+  imports: [ConfigModule, PrismaModule, FilesModule],
   controllers: [SupplyChainController],
   providers: [
     SupplyChainService,

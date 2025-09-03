@@ -240,6 +240,10 @@ export async function getPublicStatistics(): Promise<{
   totalStages: number
   averageJourneyTime: number
   verificationRate: number
+  totalTraces: number
+  averageRating: number
+  topSpecies: string
+  sustainableProducts: number
 }> {
   try {
     const response = await fetch(`${API_BASE_URL}/supply-chain/public/statistics`, {
@@ -262,7 +266,11 @@ export async function getPublicStatistics(): Promise<{
       totalProducts: 1250,
       totalStages: 8500,
       averageJourneyTime: 14,
-      verificationRate: 98.5
+      verificationRate: 98.5,
+      totalTraces: 25000,
+      averageRating: 4.6,
+      topSpecies: 'Tilapia',
+      sustainableProducts: 1120
     }
   }
 }
