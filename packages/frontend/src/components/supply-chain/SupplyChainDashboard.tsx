@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,488 +10,481 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Search, Plus, Filter, Download, MoreHorizontal, Edit, Trash2, Eye, Package, Truck, Users, TrendingUp, QrCode, MapPin, Calendar, Fish } from 'lucide-react'
+import { Search, Plus, Filter, Download, MoreHorizontal, Edit, Trash2, Eye, Package, Truck, Users, TrendingUp, QrCode, MapPin, Calendar, Fish, RefreshCw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { supplyChainApi } from '@/services/supplyChainApi'
+import type { SupplyChainRecord, SourceType, RecordStatus } from '@/services/supplyChainApi'
 
+// **COMMENTED OUT MOCK DATA - DO NOT DELETE**
 // Mock data structure - this will come from API
-interface SupplyChainRecord {
-  id: string
-  productId: string
-  batchId: string
-  sourceType: 'FARMED' | 'WILD_CAPTURE'
-  currentStage: string
-  status: 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'REJECTED'
-  product: {
-    species: {
-      scientificName: string
-      commonName: string
-    }
-    quantity: number
-    unit: string
-  }
-  origin: {
-    location: string
-    coordinates?: string
-    facility?: string
-  }
-  stages: Array<{
-    name: string
-    status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
-    completedAt?: string
-    location?: string
-  }>
-  createdAt: string
-  updatedAt: string
-  creator: {
-    name: string
-    organization: string
-    role: string
-  }
-  qrCodeGenerated: boolean
-  blockchainRecorded: boolean
+// interface SupplyChainRecord {
+//   id: string
+//   productId: string
+//   batchId: string
+//   sourceType: 'FARMED' | 'WILD_CAPTURE'
+//   currentStage: string
+//   status: 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'REJECTED'
+//   product: {
+//     species: {
+//       scientificName: string
+//       commonName: string
+//     }
+//     quantity: number
+//     unit: string
+//   }
+//   origin: {
+//     location: string
+//     coordinates?: string
+//     facility?: string
+//   }
+//   stages: Array<{
+//     name: string
+//     status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
+//     completedAt?: string
+//     location?: string
+//   }>
+//   createdAt: string
+//   updatedAt: string
+//   creator: {
+//     name: string
+//     organization: string
+//     role: string
+//   }
+//   qrCodeGenerated: boolean
+//   blockchainRecorded: boolean
+// }
+
+// **COMMENTED OUT MOCK DATA ARRAY**
+// const mockRecords: SupplyChainRecord[] = [
+//   {
+//     id: '1',
+//     productId: 'SC-2025-001',
+//     batchId: 'BATCH-001',
+//     sourceType: 'FARMED',
+//     currentStage: 'Processing',
+//     status: 'ACTIVE',
+//     product: {
+//       species: {
+//         scientificName: 'Crassostrea gasar',
+//         commonName: 'West African Oyster'
+//       },
+//       quantity: 5000,
+//       unit: 'pieces'
+//     },
+//     origin: {
+//       location: 'Lagos Lagoon Oyster Farm',
+//       coordinates: '6.4541, 3.3947',
+//       facility: 'Aqua-Tech Farms Ltd'
+//     },
+//     stages: [
+//       { name: 'Hatchery', status: 'COMPLETED', completedAt: '2025-06-01', location: 'Lagos Hatchery' },
+//       { name: 'Grow-out', status: 'COMPLETED', completedAt: '2025-08-15', location: 'Lagos Lagoon Farm' },
+//       { name: 'Harvest', status: 'COMPLETED', completedAt: '2025-08-20', location: 'Lagos Lagoon Farm' },
+//       { name: 'Processing', status: 'IN_PROGRESS', location: 'Marina Processing Plant' },
+//       { name: 'Distribution', status: 'PENDING' },
+//       { name: 'Retail', status: 'PENDING' }
+//     ],
+//     createdAt: '2025-06-01T08:00:00Z',
+//     updatedAt: '2025-08-21T14:30:00Z',
+//     creator: {
+//       name: 'John Okafor',
+//       organization: 'Aqua-Tech Farms Ltd',
+//       role: 'Farmer'
+//     },
+//     qrCodeGenerated: true,
+//     blockchainRecorded: false
+//   },
+//   // ... other mock records
+// ]
+
+interface SupplyChainPageState {
+  searchTerm: string
+  statusFilter: string
+  sourceTypeFilter: string
+  stageFilter: string
+  sortBy: string
+  sortOrder: 'asc' | 'desc'
+  selectedRecords: string[]
+  viewMode: 'table' | 'cards'
 }
 
-// Mock data
-const mockRecords: SupplyChainRecord[] = [
-  {
-    id: '1',
-    productId: 'SC-2025-001',
-    batchId: 'BATCH-001',
-    sourceType: 'FARMED',
-    currentStage: 'Processing',
-    status: 'ACTIVE',
-    product: {
-      species: {
-        scientificName: 'Crassostrea gasar',
-        commonName: 'West African Oyster'
-      },
-      quantity: 5000,
-      unit: 'pieces'
-    },
-    origin: {
-      location: 'Lagos Lagoon Oyster Farm',
-      coordinates: '6.4541, 3.3947',
-      facility: 'Aqua-Tech Farms Ltd'
-    },
-    stages: [
-      { name: 'Hatchery', status: 'COMPLETED', completedAt: '2025-06-01', location: 'Lagos Hatchery' },
-      { name: 'Grow-out', status: 'COMPLETED', completedAt: '2025-08-15', location: 'Lagos Lagoon Farm' },
-      { name: 'Harvest', status: 'COMPLETED', completedAt: '2025-08-20', location: 'Lagos Lagoon Farm' },
-      { name: 'Processing', status: 'IN_PROGRESS', location: 'Marina Processing Plant' },
-      { name: 'Distribution', status: 'PENDING' },
-      { name: 'Retail', status: 'PENDING' }
-    ],
-    createdAt: '2025-06-01T08:00:00Z',
-    updatedAt: '2025-08-21T14:30:00Z',
-    creator: {
-      name: 'John Okafor',
-      organization: 'Aqua-Tech Farms Ltd',
-      role: 'Farm Manager'
-    },
-    qrCodeGenerated: true,
-    blockchainRecorded: false
-  },
-  {
-    id: '2',
-    productId: 'SC-2025-002',
-    batchId: 'BATCH-002',
-    sourceType: 'WILD_CAPTURE',
-    currentStage: 'Distribution',
-    status: 'ACTIVE',
-    product: {
-      species: {
-        scientificName: 'Penaeus notialis',
-        commonName: 'Southern Pink Shrimp'
-      },
-      quantity: 2500,
-      unit: 'kg'
-    },
-    origin: {
-      location: 'Cross River Delta',
-      coordinates: '4.8156, 8.3297'
-    },
-    stages: [
-      { name: 'Fishing', status: 'COMPLETED', completedAt: '2025-08-18', location: 'Cross River Delta' },
-      { name: 'Processing', status: 'COMPLETED', completedAt: '2025-08-19', location: 'Calabar Processing Center' },
-      { name: 'Distribution', status: 'IN_PROGRESS', location: 'Lagos Distribution Hub' },
-      { name: 'Retail', status: 'PENDING' }
-    ],
-    createdAt: '2025-08-18T05:30:00Z',
-    updatedAt: '2025-08-22T11:15:00Z',
-    creator: {
-      name: 'Captain Ibrahim Hassan',
-      organization: 'Delta Fisheries Cooperative',
-      role: 'Vessel Captain'
-    },
-    qrCodeGenerated: true,
-    blockchainRecorded: true
-  },
-  {
-    id: '3',
-    productId: 'SC-2025-003',
-    batchId: 'BATCH-003',
-    sourceType: 'FARMED',
-    currentStage: 'Grow-out',
-    status: 'ACTIVE',
-    product: {
-      species: {
-        scientificName: 'Mytilus edulis',
-        commonName: 'Blue Mussel'
-      },
-      quantity: 8000,
-      unit: 'pieces'
-    },
-    origin: {
-      location: 'Ogun River Mussel Farm',
-      coordinates: '6.5845, 3.5234',
-      facility: 'Marine Culture Systems'
-    },
-    stages: [
-      { name: 'Hatchery', status: 'COMPLETED', completedAt: '2025-05-15', location: 'Ogun Hatchery' },
-      { name: 'Grow-out', status: 'IN_PROGRESS', location: 'Ogun River Farm' },
-      { name: 'Harvest', status: 'PENDING' },
-      { name: 'Processing', status: 'PENDING' },
-      { name: 'Distribution', status: 'PENDING' },
-      { name: 'Retail', status: 'PENDING' }
-    ],
-    createdAt: '2025-05-15T10:00:00Z',
-    updatedAt: '2025-08-25T16:45:00Z',
-    creator: {
-      name: 'Dr. Funmi Adebayo',
-      organization: 'Marine Culture Systems',
-      role: 'Aquaculture Specialist'
-    },
-    qrCodeGenerated: false,
-    blockchainRecorded: false
-  }
-]
-
-interface SupplyChainDashboardProps {
-  onCreateNew?: () => void
-  onEditRecord?: (recordId: string) => void
-  onViewRecord?: (recordId: string) => void
+interface SupplyChainPageProps {
+  onCreateNew: () => void
+  onEditRecord: (recordId: string) => void
+  onViewRecord: (recordId: string) => void
 }
 
-export default function SupplyChainDashboard({ 
-  onCreateNew, 
+export default function SupplyChainDashboard({
+  onCreateNew,
   onEditRecord,
-  onViewRecord 
-}: SupplyChainDashboardProps) {
-  const [records, setRecords] = useState<SupplyChainRecord[]>(mockRecords)
-  const [filteredRecords, setFilteredRecords] = useState<SupplyChainRecord[]>(mockRecords)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [sourceTypeFilter, setSourceTypeFilter] = useState<string>('all')
-  const [stageFilter, setStageFilter] = useState<string>('all')
-  const [isLoading, setIsLoading] = useState(false)
+  onViewRecord
+}: SupplyChainPageProps) {
+  const [state, setState] = useState<SupplyChainPageState>({
+    searchTerm: '',
+    statusFilter: 'all',
+    sourceTypeFilter: 'all',
+    stageFilter: 'all',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    selectedRecords: [],
+    viewMode: 'table'
+  })
+
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
-  // Filter records
-  useEffect(() => {
-    let filtered = records
+  // **REAL API INTEGRATION - REPLACE MOCK DATA**
+  const {
+    data: apiResponse,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['supply-chain-records', state.statusFilter, state.sourceTypeFilter, state.stageFilter, state.searchTerm],
+    queryFn: async () => {
+      const params: any = {}
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(record => 
-        record.productId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.batchId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.product.species.scientificName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.product.species.commonName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.origin.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.creator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.creator.organization.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    }
-
-    // Apply filters
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(record => record.status === statusFilter)
-    }
-
-    if (sourceTypeFilter !== 'all') {
-      filtered = filtered.filter(record => record.sourceType === sourceTypeFilter)
-    }
-
-    if (stageFilter !== 'all') {
-      filtered = filtered.filter(record => record.currentStage === stageFilter)
-    }
-
-    setFilteredRecords(filtered)
-  }, [records, searchQuery, statusFilter, sourceTypeFilter, stageFilter])
-
-  // Get status badge variant
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return <Badge className="bg-green-100 text-green-800">Completed</Badge>
-      case 'ACTIVE':
-        return <Badge className="bg-blue-100 text-blue-800">Active</Badge>
-      case 'DRAFT':
-        return <Badge className="bg-gray-100 text-gray-800">Draft</Badge>
-      case 'REJECTED':
-        return <Badge className="bg-red-100 text-red-800">Rejected</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
-    }
-  }
-
-  // Get source type badge
-  const getSourceTypeBadge = (sourceType: string) => {
-    return sourceType === 'FARMED' 
-      ? <Badge variant="outline" className="gap-1"><Fish className="h-3 w-3" />Farmed</Badge>
-      : <Badge variant="outline" className="gap-1"><MapPin className="h-3 w-3" />Wild-capture</Badge>
-  }
-
-  // Get stage progress
-  const getStageProgress = (stages: any[]) => {
-    const completed = stages.filter(s => s.status === 'COMPLETED').length
-    return `${completed}/${stages.length}`
-  }
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  // Statistics
-  const stats = {
-    total: records.length,
-    active: records.filter(r => r.status === 'ACTIVE').length,
-    completed: records.filter(r => r.status === 'COMPLETED').length,
-    farmed: records.filter(r => r.sourceType === 'FARMED').length,
-    wildCapture: records.filter(r => r.sourceType === 'WILD_CAPTURE').length,
-    withQR: records.filter(r => r.qrCodeGenerated).length,
-    onBlockchain: records.filter(r => r.blockchainRecorded).length
-  }
-
-  // Handle record actions
-  const handleView = (recordId: string) => {
-    onViewRecord?.(recordId)
-  }
-
-  const handleEdit = (recordId: string) => {
-    onEditRecord?.(recordId)
-  }
-
-  const handleDelete = async (recordId: string) => {
-    if (confirm('Are you sure you want to delete this supply chain record? This action cannot be undone.')) {
-      try {
-        setRecords(prev => prev.filter(r => r.id !== recordId))
-        toast({
-          title: "Record Deleted",
-          description: "Supply chain record has been deleted successfully.",
-        })
-      } catch (error) {
-        toast({
-          title: "Delete Failed",
-          description: "Could not delete record. Please try again.",
-          variant: "destructive"
-        })
+      if (state.statusFilter !== 'all') {
+        params.status = state.statusFilter.toUpperCase()
       }
+
+      if (state.sourceTypeFilter !== 'all') {
+        params.sourceType = state.sourceTypeFilter.toUpperCase()
+      }
+
+      if (state.stageFilter !== 'all') {
+        params.currentStage = state.stageFilter
+      }
+
+      if (state.searchTerm) {
+        params.search = state.searchTerm
+      }
+
+      params.sortBy = state.sortBy
+      params.sortOrder = state.sortOrder
+
+      return await supplyChainApi.getRecords(params)
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+
+  // **REAL STATISTICS API INTEGRATION**
+  const {
+    data: statistics,
+    isLoading: statsLoading
+  } = useQuery({
+    queryKey: ['supply-chain-statistics'],
+    queryFn: () => supplyChainApi.getStatistics(),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // **DELETE MUTATION**
+  const deleteMutation = useMutation({
+    mutationFn: (recordId: string) => supplyChainApi.deleteRecord(recordId),
+    onSuccess: () => {
+      toast({
+        title: "Record Deleted",
+        description: "Supply chain record has been deleted successfully.",
+      })
+      queryClient.invalidateQueries({ queryKey: ['supply-chain-records'] })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete record. Please try again.",
+        variant: "destructive"
+      })
+    },
+  })
+
+  // **QR CODE GENERATION MUTATION**
+  const generateQRMutation = useMutation({
+    mutationFn: (recordId: string) => supplyChainApi.generateQRCode(recordId),
+    onSuccess: () => {
+      toast({
+        title: "QR Code Generated",
+        description: "QR code has been generated successfully.",
+      })
+      queryClient.invalidateQueries({ queryKey: ['supply-chain-records'] })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "QR Generation Failed",
+        description: error.message || "Failed to generate QR code. Please try again.",
+        variant: "destructive"
+      })
+    },
+  })
+
+  // **DERIVED DATA FROM API RESPONSE**
+  const records: SupplyChainRecord[] = (apiResponse as any)?.records || []
+  const totalRecords: number = (apiResponse as any)?.total || 0
+
+  // **HANDLE REAL API ERRORS**
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Failed to Load Records",
+        description: "Could not fetch supply chain records. Please check your connection.",
+        variant: "destructive"
+      })
+    }
+  }, [error, toast])
+
+  // **REAL STATISTICS CALCULATIONS**
+  const stats = {
+    total: (statistics as any)?.totalRecords || totalRecords,
+    active: (statistics as any)?.recordsByStatus?.active || records.filter((r: SupplyChainRecord) => r.status === 'ACTIVE').length,
+    completed: (statistics as any)?.recordsByStatus?.completed || records.filter((r: SupplyChainRecord) => r.status === 'COMPLETED').length,
+    draft: (statistics as any)?.recordsByStatus?.draft || records.filter((r: SupplyChainRecord) => r.status === 'DRAFT').length,
+    farmed: (statistics as any)?.recordsBySourceType?.farmed || records.filter((r: SupplyChainRecord) => r.sourceType === 'FARMED').length,
+    wildCapture: (statistics as any)?.recordsBySourceType?.wildCapture || records.filter((r: SupplyChainRecord) => r.sourceType === 'WILD_CAPTURE').length,
+    qrGenerated: (statistics as any)?.qrCodeStats?.generated || records.filter((r: SupplyChainRecord) => r.qrCodeGenerated).length,
+    blockchainRecorded: (statistics as any)?.blockchainStats?.recorded || records.filter((r: SupplyChainRecord) => r.blockchainTxHash).length,
+  }
+
+  // Handle search with debouncing
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      // Search is handled by react-query key change
+    }, 500)
+
+    return () => clearTimeout(debounceTimer)
+  }, [state.searchTerm])
+
+  // Handle record selection
+  const handleRecordSelection = (recordId: string, selected: boolean) => {
+    setState(prev => ({
+      ...prev,
+      selectedRecords: selected
+        ? [...prev.selectedRecords, recordId]
+        : prev.selectedRecords.filter(id => id !== recordId)
+    }))
+  }
+
+  const handleSelectAll = (selected: boolean) => {
+    setState(prev => ({
+      ...prev,
+      selectedRecords: selected ? records.map((r: SupplyChainRecord) => r.id) : []
+    }))
+  }
+
+  // Handle delete with confirmation
+  const handleDeleteRecord = async (recordId: string) => {
+    if (confirm('Are you sure you want to delete this supply chain record? This action cannot be undone.')) {
+      deleteMutation.mutate(recordId)
     }
   }
 
-  const handleGenerateQR = (recordId: string) => {
-    toast({
-      title: "QR Code Generated",
-      description: "QR code has been generated for this product batch.",
-    })
-    // TODO: Implement QR code generation
+  // Handle QR code generation
+  const handleGenerateQR = async (recordId: string) => {
+    generateQRMutation.mutate(recordId)
   }
 
-  const handleExport = () => {
-    toast({
-      title: "Export Started",
-      description: "Preparing supply chain records for download...",
-    })
-    // TODO: Implement export functionality
+  // Get stage status badge color
+  const getStageStatusColor = (status: string) => {
+    switch (status) {
+      case 'COMPLETED': return 'default'
+      case 'IN_PROGRESS': return 'secondary'
+      case 'PENDING': return 'outline'
+      default: return 'outline'
+    }
+  }
+
+  // Get source type icon and color
+  const getSourceTypeInfo = (sourceType: SourceType) => {
+    return sourceType === 'FARMED'
+      ? { icon: Fish, color: 'text-blue-600', bg: 'bg-blue-50', label: 'Farmed' }
+      : { icon: MapPin, color: 'text-green-600', bg: 'bg-green-50', label: 'Wild-capture' }
+  }
+
+  // Format progress percentage
+  const getProgressPercentage = (record: SupplyChainRecord) => {
+    const completedStages = record.stages?.filter(s => s.status === 'COMPLETED').length || 0
+    const totalStages = record.stages?.length || 1
+    return Math.round((completedStages / totalStages) * 100)
+  }
+
+  // **LOADING STATE**
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-2" />
+            <div className="h-4 w-96 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-32 bg-gray-200 rounded animate-pulse" />
+          ))}
+        </div>
+
+        <div className="h-96 bg-gray-200 rounded animate-pulse" />
+      </div>
+    )
+  }
+
+  // **ERROR STATE**  
+  if (error && !records.length) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8">
+            <Package className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-semibold text-gray-900">Connection Error</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Unable to load supply chain records. Please check your connection.
+            </p>
+            <Button
+              className="mt-4"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Supply Chain Records</h1>
-          <p className="text-gray-600">Track shellfish from origin to consumer</p>
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Package className="w-6 h-6 text-blue-600" />
+            Supply Chain Records
+          </h1>
+          <p className="text-gray-600">
+            Track products from source to consumer with complete traceability
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExport} className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-          <Button onClick={onCreateNew} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button onClick={onCreateNew}>
+            <Plus className="mr-2 h-4 w-4" />
             New Product
           </Button>
         </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.total}</p>
-                <p className="text-xs text-gray-600">Total</p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statsLoading ? '...' : stats.total}</div>
+            <p className="text-xs text-muted-foreground">All tracked products</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.active}</p>
-                <p className="text-xs text-gray-600">Active</p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Products</CardTitle>
+            <Truck className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{statsLoading ? '...' : stats.active}</div>
+            <p className="text-xs text-muted-foreground">Currently in transit</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Fish className="h-5 w-5 text-cyan-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.farmed}</p>
-                <p className="text-xs text-gray-600">Farmed</p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">QR Codes</CardTitle>
+            <QrCode className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{statsLoading ? '...' : stats.qrGenerated}</div>
+            <p className="text-xs text-muted-foreground">Generated codes</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.wildCapture}</p>
-                <p className="text-xs text-gray-600">Wild</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <QrCode className="h-5 w-5 text-orange-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.withQR}</p>
-                <p className="text-xs text-gray-600">QR Codes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded bg-gradient-to-r from-blue-500 to-purple-600"></div>
-              <div>
-                <p className="text-lg font-bold">{stats.onBlockchain}</p>
-                <p className="text-xs text-gray-600">Blockchain</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-indigo-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.completed}</p>
-                <p className="text-xs text-gray-600">Complete</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Truck className="h-5 w-5 text-red-600" />
-              <div>
-                <p className="text-lg font-bold">{Math.round((stats.active / stats.total) * 100)}%</p>
-                <p className="text-xs text-gray-600">In Transit</p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Blockchain</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{statsLoading ? '...' : stats.blockchainRecorded}</div>
+            <p className="text-xs text-muted-foreground">Records on-chain</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters and Search */}
       <Card>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="lg:col-span-2">
-              <Label htmlFor="search" className="sr-only">Search records</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <CardContent className="pt-6">
+          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+            <div className="flex gap-4 items-center w-full lg:w-auto">
+              <div className="relative flex-1 lg:flex-none lg:w-80">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  id="search"
-                  placeholder="Search by ID, species, location, or creator..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products, species, batches..."
+                  value={state.searchTerm}
+                  onChange={(e) => setState(prev => ({ ...prev, searchTerm: e.target.value }))}
                   className="pl-10"
                 />
               </div>
-            </div>
-            
-            <div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+
+              <Select
+                value={state.statusFilter}
+                onValueChange={(value) => setState(prev => ({ ...prev, statusFilter: value }))}
+              >
+                <SelectTrigger className="w-32">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
 
-            <div>
-              <Select value={sourceTypeFilter} onValueChange={setSourceTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Source Type" />
+              <Select
+                value={state.sourceTypeFilter}
+                onValueChange={(value) => setState(prev => ({ ...prev, sourceTypeFilter: value }))}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Source" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sources</SelectItem>
-                  <SelectItem value="FARMED">Farmed</SelectItem>
-                  <SelectItem value="WILD_CAPTURE">Wild-capture</SelectItem>
+                  <SelectItem value="farmed">Farmed</SelectItem>
+                  <SelectItem value="wild_capture">Wild-capture</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div>
-              <Select value={stageFilter} onValueChange={setStageFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Current Stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stages</SelectItem>
-                  <SelectItem value="Hatchery">Hatchery</SelectItem>
-                  <SelectItem value="Grow-out">Grow-out</SelectItem>
-                  <SelectItem value="Harvest">Harvest</SelectItem>
-                  <SelectItem value="Fishing">Fishing</SelectItem>
-                  <SelectItem value="Processing">Processing</SelectItem>
-                  <SelectItem value="Distribution">Distribution</SelectItem>
-                  <SelectItem value="Retail">Retail</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                More Filters
+              </Button>
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -498,168 +492,207 @@ export default function SupplyChainDashboard({
 
       {/* Records Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Supply Chain Records ({filteredRecords.length})</CardTitle>
-          <CardDescription>
-            {searchQuery ? `Showing results for "${searchQuery}"` : 'All supply chain records'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredRecords.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Records Found</h3>
-              <p className="text-gray-600 mb-4">
-                {searchQuery ? 'No records match your search criteria.' : 'Get started by creating your first supply chain record.'}
+        <CardContent className="pt-6">
+          {records.length === 0 ? (
+            <div className="text-center py-8">
+              <Package className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-semibold text-gray-900">No records found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {state.searchTerm || state.statusFilter !== 'all' || state.sourceTypeFilter !== 'all'
+                  ? 'Try adjusting your search or filters.'
+                  : 'Get started by creating your first supply chain record.'
+                }
               </p>
-              <Button onClick={onCreateNew} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create New Product
+              <Button className="mt-4" onClick={onCreateNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create First Product
               </Button>
             </div>
           ) : (
-            <div className="rounded-md border">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                      <TableHead className="w-12">
+                        <input
+                          type="checkbox"
+                          checked={state.selectedRecords.length === records.length && records.length > 0}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                      </TableHead>
                     <TableHead>Product ID</TableHead>
-                    <TableHead>Species</TableHead>
-                    <TableHead>Source</TableHead>
+                      <TableHead>Species & Source</TableHead>
                     <TableHead>Current Stage</TableHead>
                     <TableHead>Progress</TableHead>
                     <TableHead>Status</TableHead>
+                      <TableHead>QR Code</TableHead>
+                      <TableHead>Created</TableHead>
                     <TableHead>Creator</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>QR/Blockchain</TableHead>
-                    <TableHead>Actions</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRecords.map((record) => (
-                    <TableRow key={record.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-blue-600" />
-                          <div>
-                            <p className="font-semibold">{record.productId}</p>
-                            <p className="text-xs text-gray-500">{record.batchId}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{record.product.species.commonName}</p>
-                          <p className="text-xs text-gray-500 italic">{record.product.species.scientificName}</p>
-                          <p className="text-xs text-gray-500">{record.product.quantity} {record.product.unit}</p>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="space-y-1">
-                          {getSourceTypeBadge(record.sourceType)}
-                          <p className="text-xs text-gray-500">{record.origin.location}</p>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Badge variant="outline">{record.currentStage}</Badge>
-                      </TableCell>
+                    {records.map((record: SupplyChainRecord) => {
+                      const sourceInfo = getSourceTypeInfo(record.sourceType)
+                      const progress = getProgressPercentage(record)
 
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-medium">{getStageProgress(record.stages)}</div>
-                          <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-blue-600 transition-all duration-300"
-                              style={{ 
-                                width: `${(record.stages.filter(s => s.status === 'COMPLETED').length / record.stages.length) * 100}%` 
-                              }}
+                      return (
+                        <TableRow key={record.id} className="hover:bg-gray-50">
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={state.selectedRecords.includes(record.id)}
+                              onChange={(e) => handleRecordSelection(record.id, e.target.checked)}
+                              className="rounded border-gray-300"
                             />
-                          </div>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        {getStatusBadge(record.status)}
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div>
-                          <p className="text-sm font-medium">{record.creator.name}</p>
-                          <p className="text-xs text-gray-500">{record.creator.organization}</p>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-gray-400" />
-                          <span className="text-sm">{formatDate(record.createdAt)}</span>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1">
-                            <QrCode className="h-3 w-3" />
-                            <span className={`text-xs ${record.qrCodeGenerated ? 'text-green-600' : 'text-gray-400'}`}>
-                              {record.qrCodeGenerated ? 'Generated' : 'Pending'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 rounded bg-gradient-to-r from-blue-500 to-purple-600"></div>
-                            <span className={`text-xs ${record.blockchainRecorded ? 'text-green-600' : 'text-gray-400'}`}>
-                              {record.blockchainRecorded ? 'Recorded' : 'Pending'}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleView(record.id)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Journey
-                            </DropdownMenuItem>
-                            {(record.status === 'DRAFT' || record.status === 'ACTIVE') && (
-                              <DropdownMenuItem onClick={() => handleEdit(record.id)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Update Stage
-                              </DropdownMenuItem>
-                            )}
-                            {!record.qrCodeGenerated && (
-                              <DropdownMenuItem onClick={() => handleGenerateQR(record.id)}>
-                                <QrCode className="mr-2 h-4 w-4" />
-                                Generate QR Code
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDelete(record.id)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex flex-col space-y-1">
+                              <code className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm font-mono">
+                                {record.productId}
+                              </code>
+                              {record.batchId && (
+                                <span className="text-xs text-gray-500">Batch: {record.batchId}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col space-y-2">
+                              <div>
+                                <div className="font-medium">{record.product?.species?.commonName || 'Unknown Species'}</div>
+                                <div className="text-sm text-gray-500 italic">{record.product?.species?.scientificName}</div>
+                              </div>
+                              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${sourceInfo.bg} ${sourceInfo.color}`}>
+                                <sourceInfo.icon className="w-3 h-3 mr-1" />
+                                {sourceInfo.label}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col space-y-1">
+                              <span className="font-medium">{record.currentStage}</span>
+                              <div className="flex items-center space-x-1">
+                                <MapPin className="h-3 w-3 text-gray-400" />
+                                <span className="text-xs text-gray-500">
+                                  {record.origin?.location || 'Location not set'}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className="bg-blue-600 h-2 rounded-full"
+                                    style={{ width: `${progress}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs font-medium">{progress}%</span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {record.stages?.filter((s: any) => s.status === 'COMPLETED').length || 0} of {record.stages?.length || 0} stages
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              record.status === 'COMPLETED' ? 'default' :
+                                record.status === 'ACTIVE' ? 'secondary' :
+                                  record.status === 'REJECTED' ? 'destructive' : 'outline'
+                            }>
+                              {record.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              {record.qrCodeGenerated ? (
+                                <Badge variant="default" className="text-xs">
+                                  <QrCode className="w-3 h-3 mr-1" />
+                                  Generated
+                                </Badge>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleGenerateQR(record.id)}
+                                  disabled={generateQRMutation.isPending}
+                                  className="text-xs h-6"
+                                >
+                                  <QrCode className="w-3 h-3 mr-1" />
+                                  Generate
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{new Date(record.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="text-sm font-medium">{record.creator?.name || 'Unknown'}</div>
+                              <div className="text-xs text-gray-500">{record.creator?.organization}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => onViewRecord(record.id)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Journey
+                                </DropdownMenuItem>
+                                {(record.status === 'DRAFT' || record.status === 'ACTIVE') && (
+                                  <DropdownMenuItem onClick={() => onEditRecord(record.id)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit Record
+                                  </DropdownMenuItem>
+                                )}
+                                {!record.qrCodeGenerated && (
+                                  <DropdownMenuItem onClick={() => handleGenerateQR(record.id)}>
+                                    <QrCode className="mr-2 h-4 w-4" />
+                                    Generate QR
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteRecord(record.id)}
+                                  className="text-red-600"
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                 </TableBody>
               </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Summary */}
+      <div className="text-sm text-gray-500 text-center">
+        Showing {records.length} of {totalRecords} supply chain records
+        {state.statusFilter !== 'all' && ` (status: ${state.statusFilter})`}
+        {state.sourceTypeFilter !== 'all' && ` (source: ${state.sourceTypeFilter})`}
+        {state.searchTerm && ` (search: "${state.searchTerm}")`}
+      </div>
     </div>
   )
 }

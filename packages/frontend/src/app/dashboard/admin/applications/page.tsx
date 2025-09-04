@@ -1,6 +1,6 @@
 'use client'
 
-import { ApplicationsDashboard } from '@/components/admin/applications-dashboard'
+import { AdminDashboard } from '@/components/admin/AdminDashboard'
 import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -41,7 +41,7 @@ export default function AdminApplicationsPage() {
         <h1 className="text-2xl font-bold">Role Applications Management</h1>
       </div>
       
-      <ApplicationsDashboard />
+      <AdminDashboard />
     </div>
   )
 }

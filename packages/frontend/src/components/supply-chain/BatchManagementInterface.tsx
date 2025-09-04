@@ -1,77 +1,75 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { 
-  Search, 
-  Plus, 
-  MoreHorizontal, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  Download, 
-  Package,
-  Fish,
-  MapPin,
-  Calendar,
-  Users,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  QrCode,
-  Truck,
-  Filter
-} from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Search, Plus, Filter, Download, MoreHorizontal, Edit, Trash2, Eye, Package, Users, TrendingUp, MapPin, Calendar, Fish, RefreshCw, Layers } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { supplyChainApi } from '@/services/supplyChainApi'
+import type { SupplyChainRecord, SourceType, RecordStatus } from '@/services/supplyChainApi'
 
+// **COMMENTED OUT MOCK DATA - DO NOT DELETE**
+// type SourceType = 'FARMED' | 'WILD_CAPTURE'
+// type RecordStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'REJECTED'
 
+// interface BatchInfo {
+//   batchId: string
+//   products: SupplyChainRecord[]
+//   totalQuantity: number
+//   unit: string
+//   averageProgress: number
+//   stages: string[]
+//   createdAt: string
+//   status: RecordStatus
+//   sourceType: SourceType
+//   species: {
+//     scientificName: string
+//     commonName: string
+//   }
+//   origin: {
+//     location: string
+//     facility?: string
+//   }
+//   creator: {
+//     name: string
+//     organization: string
+//   }
+// }
 
-export type SourceType = 'FARMED' | 'WILD_CAPTURE'
-export type RecordStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'REJECTED'
-
-interface SupplyChainRecord {
-  id: string
-  productId: string
-  batchId: string
-  sourceType: SourceType
-  currentStage: string
-  status: RecordStatus
-  product: {
-    species: {
-      scientificName: string
-      commonName: string
-    }
-    quantity: number
-    unit: string
-  }
-  origin: {
-    location: string
-    coordinates?: string
-  }
-  stages: Array<{
-    name: string
-    status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
-    completedAt?: string
-  }>
-  createdAt: string
-  updatedAt: string
-  creator: {
-    name: string
-    organization: string
-  }
-  qrCodeGenerated: boolean
-  blockchainRecorded: boolean
-}
+// **COMMENTED OUT MOCK DATA ARRAY**
+// const mockBatches: BatchInfo[] = [
+//   {
+//     batchId: 'BATCH-001',
+//     sourceType: 'FARMED',
+//     species: {
+//       scientificName: 'Crassostrea gasar',
+//       commonName: 'West African Oyster'
+//     },
+//     totalQuantity: 15000,
+//     unit: 'pieces',
+//     averageProgress: 67,
+//     stages: ['Hatchery', 'Grow-out', 'Harvest', 'Processing', 'Distribution', 'Retail'],
+//     status: 'ACTIVE',
+//     createdAt: '2025-06-01T08:00:00Z',
+//     origin: {
+//       location: 'Lagos Lagoon Oyster Farm',
+//       facility: 'Aqua-Tech Farms Ltd'
+//     },
+//     creator: {
+//       name: 'John Okafor',
+//       organization: 'Aqua-Tech Farms Ltd'
+//     },
+//     products: [...]
+//   },
+//   // ... other mock batches
+// ]
 
 interface BatchInfo {
   batchId: string
@@ -97,231 +95,223 @@ interface BatchInfo {
   }
 }
 
-// Mock data
-const mockBatches: BatchInfo[] = [
-  {
-    batchId: 'BATCH-001',
-    sourceType: 'FARMED',
-    species: {
-      scientificName: 'Crassostrea gasar',
-      commonName: 'West African Oyster'
-    },
-    totalQuantity: 15000,
-    unit: 'pieces',
-    averageProgress: 67,
-    stages: ['Hatchery', 'Grow-out', 'Harvest', 'Processing', 'Distribution', 'Retail'],
-    status: 'ACTIVE',
-    createdAt: '2025-06-01T08:00:00Z',
-    origin: {
-      location: 'Lagos Lagoon Oyster Farm',
-      facility: 'Aqua-Tech Farms Ltd'
-    },
-    creator: {
-      name: 'John Okafor',
-      organization: 'Aqua-Tech Farms Ltd'
-    },
-    products: [
-      {
-        id: '1',
-        productId: 'SC-2025-001',
-        batchId: 'BATCH-001',
-        sourceType: 'FARMED',
-        currentStage: 'Processing',
-        status: 'ACTIVE',
-        product: {
-          species: { scientificName: 'Crassostrea gasar', commonName: 'West African Oyster' },
-          quantity: 5000,
-          unit: 'pieces'
-        },
-        origin: { location: 'Lagos Lagoon Oyster Farm' },
-        stages: [
-          { name: 'Hatchery', status: 'COMPLETED', completedAt: '2025-06-01' },
-          { name: 'Grow-out', status: 'COMPLETED', completedAt: '2025-08-15' },
-          { name: 'Harvest', status: 'COMPLETED', completedAt: '2025-08-20' },
-          { name: 'Processing', status: 'IN_PROGRESS' },
-          { name: 'Distribution', status: 'PENDING' },
-          { name: 'Retail', status: 'PENDING' }
-        ],
-        createdAt: '2025-06-01T08:00:00Z',
-        updatedAt: '2025-08-21T14:30:00Z',
-        creator: { name: 'John Okafor', organization: 'Aqua-Tech Farms Ltd' },
-        qrCodeGenerated: true,
-        blockchainRecorded: false
-      },
-      {
-        id: '2',
-        productId: 'SC-2025-002',
-        batchId: 'BATCH-001',
-        sourceType: 'FARMED',
-        currentStage: 'Harvest',
-        status: 'ACTIVE',
-        product: {
-          species: { scientificName: 'Crassostrea gasar', commonName: 'West African Oyster' },
-          quantity: 10000,
-          unit: 'pieces'
-        },
-        origin: { location: 'Lagos Lagoon Oyster Farm' },
-        stages: [
-          { name: 'Hatchery', status: 'COMPLETED', completedAt: '2025-06-01' },
-          { name: 'Grow-out', status: 'COMPLETED', completedAt: '2025-08-15' },
-          { name: 'Harvest', status: 'IN_PROGRESS' },
-          { name: 'Processing', status: 'PENDING' },
-          { name: 'Distribution', status: 'PENDING' },
-          { name: 'Retail', status: 'PENDING' }
-        ],
-        createdAt: '2025-06-01T08:00:00Z',
-        updatedAt: '2025-08-25T10:15:00Z',
-        creator: { name: 'John Okafor', organization: 'Aqua-Tech Farms Ltd' },
-        qrCodeGenerated: false,
-        blockchainRecorded: false
-      }
-    ]
-  },
-  {
-    batchId: 'BATCH-002',
-    sourceType: 'WILD_CAPTURE',
-    species: {
-      scientificName: 'Penaeus notialis',
-      commonName: 'Southern Pink Shrimp'
-    },
-    totalQuantity: 2500,
-    unit: 'kg',
-    averageProgress: 100,
-    stages: ['Fishing', 'Processing', 'Distribution', 'Retail'],
-    status: 'COMPLETED',
-    createdAt: '2025-08-18T05:30:00Z',
-    origin: {
-      location: 'Cross River Delta'
-    },
-    creator: {
-      name: 'Captain Ibrahim Hassan',
-      organization: 'Delta Fisheries Cooperative'
-    },
-    products: [
-      {
-        id: '3',
-        productId: 'SC-2025-003',
-        batchId: 'BATCH-002',
-        sourceType: 'WILD_CAPTURE',
-        currentStage: 'Retail',
-        status: 'COMPLETED',
-        product: {
-          species: { scientificName: 'Penaeus notialis', commonName: 'Southern Pink Shrimp' },
-          quantity: 2500,
-          unit: 'kg'
-        },
-        origin: { location: 'Cross River Delta' },
-        stages: [
-          { name: 'Fishing', status: 'COMPLETED', completedAt: '2025-08-18' },
-          { name: 'Processing', status: 'COMPLETED', completedAt: '2025-08-19' },
-          { name: 'Distribution', status: 'COMPLETED', completedAt: '2025-08-21' },
-          { name: 'Retail', status: 'COMPLETED', completedAt: '2025-08-22' }
-        ],
-        createdAt: '2025-08-18T05:30:00Z',
-        updatedAt: '2025-08-22T16:45:00Z',
-        creator: { name: 'Captain Ibrahim Hassan', organization: 'Delta Fisheries Cooperative' },
-        qrCodeGenerated: true,
-        blockchainRecorded: true
-      }
-    ]
-  }
-]
+interface BatchPageState {
+  searchTerm: string
+  statusFilter: string
+  sourceTypeFilter: string
+  sortBy: string
+  sortOrder: 'asc' | 'desc'
+  selectedBatches: string[]
+}
 
-interface BatchManagementInterfaceProps {
-  onCreateBatch?: () => void
-  onEditBatch?: (batchId: string) => void
+interface BatchManagementProps {
   onViewBatch?: (batchId: string) => void
+  onEditBatch?: (batchId: string) => void
   onDeleteBatch?: (batchId: string) => void
+  onCreateBatch?: () => void
 }
 
 export default function BatchManagementInterface({
-  onCreateBatch,
-  onEditBatch,
   onViewBatch,
-  onDeleteBatch
-}: BatchManagementInterfaceProps) {
-  const [batches, setBatches] = useState<BatchInfo[]>(mockBatches)
-  const [filteredBatches, setFilteredBatches] = useState<BatchInfo[]>(mockBatches)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [sourceTypeFilter, setSourceTypeFilter] = useState<string>('all')
+  onEditBatch,
+  onDeleteBatch,
+  onCreateBatch
+}: BatchManagementProps) {
+  const [state, setState] = useState<BatchPageState>({
+    searchTerm: '',
+    statusFilter: 'all',
+    sourceTypeFilter: 'all',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    selectedBatches: []
+  })
+
   const [selectedBatch, setSelectedBatch] = useState<BatchInfo | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
-  // Filter batches
-  useEffect(() => {
-    let filtered = batches
+  // **REAL API INTEGRATION - REPLACE MOCK DATA**
+  const {
+    data: batchesData,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['supply-chain-batches', state.statusFilter, state.sourceTypeFilter, state.searchTerm],
+    queryFn: async () => {
+      // Get all records first
+      const params: any = {}
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(batch => 
-        batch.batchId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        batch.species.scientificName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        batch.species.commonName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        batch.origin.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        batch.creator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        batch.creator.organization.toLowerCase().includes(searchQuery.toLowerCase())
+      if (state.statusFilter !== 'all') {
+        params.status = state.statusFilter.toUpperCase()
+      }
+
+      if (state.sourceTypeFilter !== 'all') {
+        params.sourceType = state.sourceTypeFilter.toUpperCase()
+      }
+
+      if (state.searchTerm) {
+        params.search = state.searchTerm
+      }
+
+      params.sortBy = state.sortBy
+      params.sortOrder = state.sortOrder
+
+      const response = await supplyChainApi.getRecords(params)
+      const records = response.records || []
+
+      // Group records by batch ID
+      const batchMap = new Map<string, SupplyChainRecord[]>()
+
+      records.forEach(record => {
+        const batchId = record.batchId || `INDIVIDUAL-${record.id}`
+        if (!batchMap.has(batchId)) {
+          batchMap.set(batchId, [])
+        }
+        batchMap.get(batchId)!.push(record)
+      })
+
+      // Convert to BatchInfo array
+      const batches: BatchInfo[] = Array.from(batchMap.entries()).map(([batchId, products]) => {
+        const firstProduct = products[0]
+        const totalQuantity = products.reduce((sum, p) => sum + (p.product?.quantity || 0), 0)
+        const completedStages = products.reduce((sum, p) => {
+          const completed = p.stages?.filter(s => s.status === 'COMPLETED').length || 0
+          const total = p.stages?.length || 1
+          return sum + (completed / total)
+        }, 0)
+        const averageProgress = Math.round((completedStages / products.length) * 100)
+
+        // Get all unique stages
+        const stagesSet = new Set<string>()
+        products.forEach(p => {
+          p.stages?.forEach(s => stagesSet.add(s.name))
+        })
+
+        return {
+          batchId,
+          products,
+          totalQuantity,
+          unit: firstProduct.product?.unit || 'units',
+          averageProgress,
+          stages: Array.from(stagesSet),
+          createdAt: firstProduct.createdAt,
+          status: firstProduct.status,
+          sourceType: firstProduct.sourceType,
+          species: {
+            scientificName: firstProduct.product?.species?.scientificName || 'Unknown',
+            commonName: firstProduct.product?.species?.commonName || 'Unknown Species'
+          },
+          origin: {
+            location: firstProduct.origin?.location || 'Unknown Location',
+            facility: firstProduct.origin?.facility
+          },
+          creator: {
+            name: firstProduct.creator?.name || 'Unknown',
+            organization: firstProduct.creator?.organization || 'Unknown Organization'
+          }
+        }
+      })
+
+      return {
+        batches: batches.sort((a, b) => {
+          const aValue = a[state.sortBy as keyof BatchInfo] as any
+          const bValue = b[state.sortBy as keyof BatchInfo] as any
+
+          if (state.sortOrder === 'asc') {
+            return aValue > bValue ? 1 : -1
+          } else {
+            return aValue < bValue ? 1 : -1
+          }
+        }),
+        total: batches.length
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+
+  // **DELETE BATCH MUTATION**
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (batchId: string) => {
+      // Delete all products in the batch
+      const batch = batches.find((b: BatchInfo) => b.batchId === batchId)
+      if (!batch) throw new Error('Batch not found')
+
+      await Promise.all(
+        batch.products.map((product: SupplyChainRecord) => supplyChainApi.deleteRecord(product.id))
       )
+    },
+    onSuccess: (_, batchId) => {
+      toast({
+        title: "Batch Deleted",
+        description: `Batch ${batchId} and all its products have been deleted successfully.`,
+      })
+      queryClient.invalidateQueries({ queryKey: ['supply-chain-batches'] })
+      onDeleteBatch?.(batchId)
+    },
+    onError: (error: any, batchId) => {
+      toast({
+        title: "Delete Failed",
+        description: `Failed to delete batch ${batchId}. ${error.message}`,
+        variant: "destructive"
+      })
+    },
+  })
+
+  // **DERIVED DATA FROM API RESPONSE**
+  const batches: BatchInfo[] = (batchesData as any)?.batches || []
+  const totalBatches: number = (batchesData as any)?.total || 0
+
+  // **HANDLE REAL API ERRORS**
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Failed to Load Batches",
+        description: "Could not fetch batch information. Please check your connection.",
+        variant: "destructive"
+      })
     }
+  }, [error, toast])
 
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(batch => batch.status === statusFilter)
-    }
-
-    // Apply source type filter
-    if (sourceTypeFilter !== 'all') {
-      filtered = filtered.filter(batch => batch.sourceType === sourceTypeFilter)
-    }
-
-    setFilteredBatches(filtered)
-  }, [batches, searchQuery, statusFilter, sourceTypeFilter])
-
-  // Get status badge
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return <Badge className="bg-green-100 text-green-800">Completed</Badge>
-      case 'ACTIVE':
-        return <Badge className="bg-blue-100 text-blue-800">Active</Badge>
-      case 'DRAFT':
-        return <Badge className="bg-gray-100 text-gray-800">Draft</Badge>
-      case 'REJECTED':
-        return <Badge className="bg-red-100 text-red-800">Rejected</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
-    }
-  }
-
-  // Get source type badge
-  const getSourceTypeBadge = (sourceType: string) => {
-    return sourceType === 'FARMED' 
-      ? <Badge variant="outline" className="gap-1"><Fish className="h-3 w-3" />Farmed</Badge>
-      : <Badge variant="outline" className="gap-1"><MapPin className="h-3 w-3" />Wild-capture</Badge>
-  }
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  // Statistics
+  // **REAL STATISTICS CALCULATIONS**
   const stats = {
-    total: batches.length,
-    active: batches.filter(b => b.status === 'ACTIVE').length,
-    completed: batches.filter(b => b.status === 'COMPLETED').length,
-    totalProducts: batches.reduce((sum, batch) => sum + batch.products.length, 0),
-    averageProgress: batches.reduce((sum, batch) => sum + batch.averageProgress, 0) / batches.length
+    total: totalBatches,
+    active: batches.filter((b: BatchInfo) => b.status === 'ACTIVE').length,
+    completed: batches.filter((b: BatchInfo) => b.status === 'COMPLETED').length,
+    totalProducts: batches.reduce((sum: number, batch: BatchInfo) => sum + batch.products.length, 0),
+    averageProgress: batches.length > 0 ? Math.round(batches.reduce((sum: number, batch: BatchInfo) => sum + batch.averageProgress, 0) / batches.length) : 0
+  }
+
+  // Handle search with debouncing
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      // Search is handled by react-query key change
+    }, 500)
+
+    return () => clearTimeout(debounceTimer)
+  }, [state.searchTerm])
+
+  // Handle batch selection
+  const handleBatchSelection = (batchId: string, selected: boolean) => {
+    setState(prev => ({
+      ...prev,
+      selectedBatches: selected
+        ? [...prev.selectedBatches, batchId]
+        : prev.selectedBatches.filter(id => id !== batchId)
+    }))
+  }
+
+  const handleSelectAll = (selected: boolean) => {
+    setState(prev => ({
+      ...prev,
+      selectedBatches: selected ? batches.map((b: BatchInfo) => b.batchId) : []
+    }))
   }
 
   // Handle actions
   const handleViewBatch = (batchId: string) => {
-    const batch = batches.find(b => b.batchId === batchId)
+    const batch = batches.find((b: BatchInfo) => b.batchId === batchId)
     if (batch) {
       setSelectedBatch(batch)
     }
@@ -334,158 +324,206 @@ export default function BatchManagementInterface({
 
   const handleDeleteBatch = async (batchId: string) => {
     if (confirm(`Are you sure you want to delete batch ${batchId}? This will affect all products in the batch.`)) {
-      try {
-        setBatches(prev => prev.filter(b => b.batchId !== batchId))
-        toast({
-          title: "Batch Deleted",
-          description: `Batch ${batchId} and all its products have been deleted.`,
-        })
-      } catch (error) {
-        toast({
-          title: "Delete Failed",
-          description: "Could not delete batch. Please try again.",
-          variant: "destructive"
-        })
-      }
+      deleteBatchMutation.mutate(batchId)
     }
-    onDeleteBatch?.(batchId)
   }
 
-  const handleExport = () => {
-    toast({
-      title: "Export Started",
-      description: "Preparing batch data for download...",
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     })
+  }
+
+  // Get source type badge
+  const getSourceTypeBadge = (sourceType: SourceType) => {
+    return sourceType === 'FARMED'
+      ? <Badge variant="outline" className="gap-1"><Fish className="h-3 w-3" />Farmed</Badge>
+      : <Badge variant="outline" className="gap-1"><MapPin className="h-3 w-3" />Wild-capture</Badge>
+  }
+
+  // **LOADING STATE**
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-2" />
+            <div className="h-4 w-96 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-32 bg-gray-200 rounded animate-pulse" />
+          ))}
+        </div>
+
+        <div className="h-96 bg-gray-200 rounded animate-pulse" />
+      </div>
+    )
+  }
+
+  // **ERROR STATE**  
+  if (error && !batches.length) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8">
+            <Layers className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-semibold text-gray-900">Connection Error</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Unable to load batch information. Please check your connection.
+            </p>
+            <Button
+              className="mt-4"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Batch Management</h1>
-          <p className="text-gray-600">Manage groups of products in batches for efficient tracking</p>
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Layers className="w-6 h-6 text-blue-600" />
+            Batch Management
+          </h1>
+          <p className="text-gray-600">
+            Manage and track product batches throughout the supply chain
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExport} className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-          <Button onClick={onCreateBatch} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Batch
-          </Button>
+          {onCreateBatch && (
+            <Button onClick={onCreateBatch}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Batch
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {/* Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Package className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.total}</p>
-                <p className="text-xs text-gray-600">Total Batches</p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Batches</CardTitle>
+            <Layers className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">All product batches</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.active}</p>
-                <p className="text-xs text-gray-600">Active</p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Batches</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.active}</div>
+            <p className="text-xs text-muted-foreground">Currently processing</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.completed}</p>
-                <p className="text-xs text-gray-600">Completed</p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <Package className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.totalProducts}</div>
+            <p className="text-xs text-muted-foreground">Across all batches</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-lg font-bold">{stats.totalProducts}</p>
-                <p className="text-xs text-gray-600">Total Products</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-orange-600" />
-              <div>
-                <p className="text-lg font-bold">{Math.round(stats.averageProgress)}%</p>
-                <p className="text-xs text-gray-600">Avg Progress</p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Progress</CardTitle>
+            <Users className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.averageProgress}%</div>
+            <p className="text-xs text-muted-foreground">Completion rate</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters and Search */}
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search" className="sr-only">Search batches</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <CardContent className="pt-6">
+          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+            <div className="flex gap-4 items-center w-full lg:w-auto">
+              <div className="relative flex-1 lg:flex-none lg:w-80">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  id="search"
-                  placeholder="Search by batch ID, species, location, or creator..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search batches, species, locations..."
+                  value={state.searchTerm}
+                  onChange={(e) => setState(prev => ({ ...prev, searchTerm: e.target.value }))}
                   className="pl-10"
                 />
               </div>
-            </div>
-            
-            <div className="sm:w-48">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filter by status" />
+
+              <Select
+                value={state.statusFilter}
+                onValueChange={(value) => setState(prev => ({ ...prev, statusFilter: value }))}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={state.sourceTypeFilter}
+                onValueChange={(value) => setState(prev => ({ ...prev, sourceTypeFilter: value }))}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="farmed">Farmed</SelectItem>
+                  <SelectItem value="wild_capture">Wild-capture</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="sm:w-48">
-              <Select value={sourceTypeFilter} onValueChange={setSourceTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sources</SelectItem>
-                  <SelectItem value="FARMED">Farmed</SelectItem>
-                  <SelectItem value="WILD_CAPTURE">Wild-capture</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+              </Button>
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -493,100 +531,109 @@ export default function BatchManagementInterface({
 
       {/* Batches Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Batches ({filteredBatches.length})</CardTitle>
-          <CardDescription>
-            {searchQuery ? `Showing results for "${searchQuery}"` : 'All batch records'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredBatches.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Batches Found</h3>
-              <p className="text-gray-600 mb-4">
-                {searchQuery ? 'No batches match your search criteria.' : 'Get started by creating your first batch.'}
+        <CardContent className="pt-6">
+          {batches.length === 0 ? (
+            <div className="text-center py-8">
+              <Layers className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-semibold text-gray-900">No batches found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {state.searchTerm || state.statusFilter !== 'all' || state.sourceTypeFilter !== 'all'
+                  ? 'Try adjusting your search or filters.'
+                  : 'Batches will appear here when products share the same batch ID.'
+                }
               </p>
-              <Button onClick={onCreateBatch} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create New Batch
-              </Button>
             </div>
           ) : (
-            <div className="rounded-md border">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                      <TableHead className="w-12">
+                        <input
+                          type="checkbox"
+                          checked={state.selectedBatches.length === batches.length && batches.length > 0}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                      </TableHead>
                     <TableHead>Batch ID</TableHead>
-                    <TableHead>Species</TableHead>
-                    <TableHead>Source Type</TableHead>
-                    <TableHead>Products</TableHead>
-                    <TableHead>Total Quantity</TableHead>
+                      <TableHead>Species & Source</TableHead>
+                      <TableHead>Products</TableHead>
                     <TableHead>Progress</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
+                      <TableHead>Creator</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBatches.map((batch) => (
+                    {batches.map((batch: BatchInfo) => (
                     <TableRow key={batch.batchId} className="hover:bg-gray-50">
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={state.selectedBatches.includes(batch.batchId)}
+                            onChange={(e) => handleBatchSelection(batch.batchId, e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                        </TableCell>
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-blue-600" />
+                          <code className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-sm font-mono">
                           {batch.batchId}
-                        </div>
-                      </TableCell>
-                      
+                          </code>
+                        </TableCell>
                       <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{batch.species.commonName}</p>
-                          <p className="text-xs text-gray-500 italic">{batch.species.scientificName}</p>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        {getSourceTypeBadge(batch.sourceType)}
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Users className="h-3 w-3 text-gray-400" />
-                          <span className="text-sm font-medium">{batch.products.length}</span>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{batch.totalQuantity.toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">{batch.unit}</p>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-blue-600 transition-all duration-300"
-                              style={{ width: `${batch.averageProgress}%` }}
-                            />
+                          <div className="flex flex-col space-y-2">
+                            <div>
+                              <div className="font-medium">{batch.species.commonName}</div>
+                              <div className="text-sm text-gray-500 italic">{batch.species.scientificName}</div>
+                            </div>
+                            {getSourceTypeBadge(batch.sourceType)}
                           </div>
-                          <span className="text-sm font-medium">{Math.round(batch.averageProgress)}%</span>
+                        </TableCell>
+                      <TableCell>
+                          <div className="flex flex-col space-y-1">
+                            <div className="font-medium">{batch.products.length} products</div>
+                            <div className="text-sm text-gray-500">
+                              {batch.totalQuantity.toLocaleString()} {batch.unit}
+                            </div>
+                        </div>
+                        </TableCell>
+                      <TableCell>
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{ width: `${batch.averageProgress}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs font-medium">{batch.averageProgress}%</span>
+                            </div>
+                        </div>
+                        </TableCell>
+                      <TableCell>
+                          <Badge variant={
+                            batch.status === 'COMPLETED' ? 'default' :
+                              batch.status === 'ACTIVE' ? 'secondary' :
+                                batch.status === 'REJECTED' ? 'destructive' : 'outline'
+                          }>
+                            {batch.status}
+                          </Badge>
+                      </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(batch.createdAt)}</span>
+                          </div>
+                        </TableCell>
+                      <TableCell>
+                          <div>
+                            <div className="text-sm font-medium">{batch.creator.name}</div>
+                            <div className="text-xs text-gray-500">{batch.creator.organization}</div>
                         </div>
                       </TableCell>
-                      
-                      <TableCell>
-                        {getStatusBadge(batch.status)}
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-gray-400" />
-                          <span className="text-sm">{formatDate(batch.createdAt)}</span>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
+                        <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -600,7 +647,7 @@ export default function BatchManagementInterface({
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            {(batch.status === 'DRAFT' || batch.status === 'ACTIVE') && (
+                              {(batch.status === 'DRAFT' || batch.status === 'ACTIVE') && onEditBatch && (
                               <DropdownMenuItem onClick={() => handleEditBatch(batch.batchId)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Batch
@@ -610,9 +657,10 @@ export default function BatchManagementInterface({
                             <DropdownMenuItem 
                               onClick={() => handleDeleteBatch(batch.batchId)}
                               className="text-red-600"
+                                disabled={deleteBatchMutation.isPending}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
+                                {deleteBatchMutation.isPending ? 'Deleting...' : 'Delete'}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -629,111 +677,80 @@ export default function BatchManagementInterface({
       {/* Batch Detail Modal */}
       {selectedBatch && (
         <Dialog open={!!selectedBatch} onOpenChange={() => setSelectedBatch(null)}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                {selectedBatch.batchId} Details
+                <Layers className="w-5 h-5 text-blue-600" />
+                Batch Details: {selectedBatch.batchId}
               </DialogTitle>
               <DialogDescription>
-                Detailed information and products in this batch
+                Complete information about this product batch
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6">
               {/* Batch Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Batch Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Batch ID:</span> {selectedBatch.batchId}</div>
-                    <div><span className="font-medium">Species:</span> {selectedBatch.species.commonName}</div>
-                    <div><span className="font-medium">Scientific Name:</span> <em>{selectedBatch.species.scientificName}</em></div>
-                    <div><span className="font-medium">Source Type:</span> {selectedBatch.sourceType}</div>
-                    <div><span className="font-medium">Total Quantity:</span> {selectedBatch.totalQuantity} {selectedBatch.unit}</div>
-                  </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{selectedBatch.products.length}</div>
+                  <div className="text-sm text-gray-600">Products</div>
                 </div>
-
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Origin & Creator</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Location:</span> {selectedBatch.origin.location}</div>
-                    {selectedBatch.origin.facility && (
-                      <div><span className="font-medium">Facility:</span> {selectedBatch.origin.facility}</div>
-                    )}
-                    <div><span className="font-medium">Creator:</span> {selectedBatch.creator.name}</div>
-                    <div><span className="font-medium">Organization:</span> {selectedBatch.creator.organization}</div>
-                    <div><span className="font-medium">Created:</span> {formatDate(selectedBatch.createdAt)}</div>
-                  </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">{selectedBatch.totalQuantity.toLocaleString()}</div>
+                  <div className="text-sm text-gray-600">{selectedBatch.unit}</div>
                 </div>
-
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Progress & Status</h4>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Status:</span> {getStatusBadge(selectedBatch.status)}</div>
-                    <div><span className="font-medium">Products:</span> {selectedBatch.products.length}</div>
-                    <div><span className="font-medium">Average Progress:</span> {Math.round(selectedBatch.averageProgress)}%</div>
-                    <div className="mt-2">
-                      <Progress value={selectedBatch.averageProgress} className="h-2" />
-                    </div>
-                  </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">{selectedBatch.averageProgress}%</div>
+                  <div className="text-sm text-gray-600">Progress</div>
+                </div>
+                <div className="text-center p-3 bg-orange-50 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">{selectedBatch.stages.length}</div>
+                  <div className="text-sm text-gray-600">Stages</div>
                 </div>
               </div>
 
               {/* Products in Batch */}
               <div>
-                <h4 className="font-semibold text-gray-900 mb-4">Products in Batch ({selectedBatch.products.length})</h4>
-                <div className="rounded-md border">
+                <h4 className="font-semibold mb-3">Products in this Batch</h4>
+                <div className="border rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product ID</TableHead>
                         <TableHead>Current Stage</TableHead>
-                        <TableHead>Quantity</TableHead>
                         <TableHead>Progress</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>QR/Blockchain</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {selectedBatch.products.map((product) => {
-                        const completedStages = product.stages.filter(s => s.status === 'COMPLETED').length
-                        const progress = (completedStages / product.stages.length) * 100
+                        const completedStages = product.stages?.filter(s => s.status === 'COMPLETED').length || 0
+                        const totalStages = product.stages?.length || 1
+                        const productProgress = Math.round((completedStages / totalStages) * 100)
                         
                         return (
                           <TableRow key={product.id}>
-                            <TableCell className="font-medium">{product.productId}</TableCell>
+                            <TableCell className="font-mono text-sm">{product.productId}</TableCell>
+                            <TableCell>{product.currentStage}</TableCell>
                             <TableCell>
-                              <Badge variant="outline">{product.currentStage}</Badge>
-                            </TableCell>
-                            <TableCell>{product.product.quantity} {product.product.unit}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="w-12 h-2 bg-gray-200 rounded-full">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
                                   <div 
-                                    className="h-full bg-blue-600 rounded-full"
-                                    style={{ width: `${progress}%` }}
-                                  />
+                                    className="bg-blue-600 h-2 rounded-full"
+                                    style={{ width: `${productProgress}%` }}
+                                  ></div>
                                 </div>
-                                <span className="text-xs">{Math.round(progress)}%</span>
+                                <span className="text-xs">{productProgress}%</span>
                               </div>
                             </TableCell>
-                            <TableCell>{getStatusBadge(product.status)}</TableCell>
                             <TableCell>
-                              <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-1">
-                                  <QrCode className="h-3 w-3" />
-                                  <span className={`text-xs ${product.qrCodeGenerated ? 'text-green-600' : 'text-gray-400'}`}>
-                                    {product.qrCodeGenerated ? 'Generated' : 'Pending'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <div className="w-3 h-3 rounded bg-gradient-to-r from-blue-500 to-purple-600"></div>
-                                  <span className={`text-xs ${product.blockchainRecorded ? 'text-green-600' : 'text-gray-400'}`}>
-                                    {product.blockchainRecorded ? 'Recorded' : 'Pending'}
-                                  </span>
-                                </div>
-                              </div>
+                              <Badge variant={
+                                product.status === 'COMPLETED' ? 'default' :
+                                  product.status === 'ACTIVE' ? 'secondary' :
+                                    product.status === 'REJECTED' ? 'destructive' : 'outline'
+                              }>
+                                {product.status}
+                              </Badge>
                             </TableCell>
                           </TableRow>
                         )
@@ -746,6 +763,14 @@ export default function BatchManagementInterface({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Summary */}
+      <div className="text-sm text-gray-500 text-center">
+        Showing {batches.length} batches with {stats.totalProducts} total products
+        {state.statusFilter !== 'all' && ` (status: ${state.statusFilter})`}
+        {state.sourceTypeFilter !== 'all' && ` (source: ${state.sourceTypeFilter})`}
+        {state.searchTerm && ` (search: "${state.searchTerm}")`}
+      </div>
     </div>
   )
 }
