@@ -130,3 +130,23 @@ export class FileUploadResponseDto {
   })
   uploadedAt: Date;
 }
+
+export class BatchFileUploadResponseDto {
+  @ApiProperty({
+    description: 'Array of uploaded files',
+    type: [FileUploadResponseDto]
+  })
+  files: FileUploadResponseDto[];
+
+  @ApiProperty({
+    description: 'Total size of all files in bytes',
+    example: 2048576
+  })
+  totalSize: number;
+
+  @ApiProperty({
+    description: 'Total number of files uploaded',
+    example: 3
+  })
+  totalFiles: number;
+}
