@@ -1,27 +1,28 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 
 // Core modules
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
 
-// Feature modules
-import { RoleApplicationsModule } from './role-applications/role-applications.module';
+// Feature modules  
+import { AdminModule } from './admin/admin.module';
 import { ConservationModule } from './conservation/conservation.module';
 import { SupplyChainModule } from './supply-chain/supply-chain.module';
 import { FilesModule } from './files/files.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
-import { AdminModule } from './admin/admin.module';
+import { RoleApplicationsModule } from './role-applications/role-applications.module';
 
 // Guards, filters, and interceptors
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { ValidationPipe } from './common/pipes/validation.pipe';
 
 // Middleware
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
@@ -44,8 +45,9 @@ import { AppService } from './app.service';
     ConfigModule.forRoot({
       load: [appConfig, databaseConfig, jwtConfig, fileConfig, blockchainConfig],
       isGlobal: true,
-      envFilePath: ['.env.local', '.env.production', '.env'],
+      envFilePath: ['.env.local', '.env.development', '.env.production', '.env'],
       expandVariables: true,
+      cache: true,
     }),
 
     // Rate limiting with multiple tiers
@@ -58,52 +60,54 @@ import { AppService } from './app.service';
           limit: configService.get('NODE_ENV') === 'production' ? 5 : 10,
         },
         {
-          name: 'medium',
+          name: 'medium', 
           ttl: 60000, // 1 minute
           limit: configService.get('NODE_ENV') === 'production' ? 50 : 100,
         },
         {
           name: 'long',
           ttl: 3600000, // 1 hour
-          limit: configService.get('NODE_ENV') === 'production' ? 500 : 1000,
+          limit: configService.get('NODE_ENV') === 'production' ? 200 : 1000,
         },
       ],
+    }),
+
+    // Passport and JWT
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get('jwt.secret'),
+        signOptions: {
+          expiresIn: configService.get('jwt.expiresIn'),
+        },
+      }),
     }),
 
     // Core modules
     PrismaModule,
     AuthModule,
-    UsersModule,
 
     // Feature modules
-    RoleApplicationsModule,
+    AdminModule,
     ConservationModule,
     SupplyChainModule,
     FilesModule,
     BlockchainModule,
-    AdminModule,
+    RoleApplicationsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
 
-    // Global validation pipe
-    {
-      provide: APP_PIPE,
-      useFactory: () => new ValidationPipe({
-        whitelist: true, // Strip props that are not in DTO
-        forbidNonWhitelisted: true, // Throw error if non-whitelisted props
-        transform: true, // Transform payload to DTO instance
-        transformOptions: {
-          enableImplicitConversion: true, // Convert string to number/boolean
-        },
-      }),
-    },
-
     // Global guards
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
 
     // Global filters
@@ -121,13 +125,21 @@ import { AppService } from './app.service';
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
     },
+
+    // Global pipes
+    {
+      provide: APP_PIPE,
+      useClass: ValidationPipe,
+    },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(LoggerMiddleware)
-      .forRoutes('*')
+      .forRoutes('*');
+
+    consumer
       .apply(CorsMiddleware)
       .forRoutes('*');
   }
