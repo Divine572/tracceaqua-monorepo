@@ -1,31 +1,54 @@
 {
   "name": "@tracceaqua/contracts",
   "version": "1.0.0",
-  "description": "TracceAqua Smart Contracts",
+  "description": "TracceAqua Smart Contracts for Seafood Traceability",
   "main": "index.js",
   "scripts": {
     "build": "hardhat compile",
-    "dev": "hardhat node",
+    "clean": "hardhat clean",
     "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
+    "test:gas": "REPORT_GAS=true hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network mainnet",
     "verify:sepolia": "hardhat run scripts/verify.ts --network sepolia",
-    "lint": "solhint 'contracts/**/*.sol'"
+    "verify:mainnet": "hardhat run scripts/verify.ts --network mainnet",
+    "setup-roles": "hardhat run scripts/setup-roles.ts --network sepolia",
+    "test-contract": "hardhat run scripts/test-contract.ts --network sepolia",
+    "lint": "solhint 'contracts/**/*.sol'",
+    "lint:fix": "solhint 'contracts/**/*.sol' --fix",
+    "typechain": "hardhat typechain",
+    "size": "hardhat size-contracts",
+    "analyze": "slither contracts/ --print contract-summary"
   },
+  "keywords": [
+    "blockchain",
+    "solidity",
+    "smart-contracts",
+    "seafood",
+    "traceability",
+    "supply-chain"
+  ],
+  "author": "TracceAqua Team",
+  "license": "MIT",
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
     "@nomicfoundation/hardhat-ethers": "^3.1.0",
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.14",
     "@nomicfoundation/hardhat-network-helpers": "^1.1.0",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@nomicfoundation/hardhat-verify": "^2.1.0",
-    "@types/chai": "^4.2.0",
-    "@types/mocha": ">=9.1.0",
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^4.2.0",
+    "@types/mocha": ">=9.1.0",
     "chai": "^4.2.0",
     "dotenv": "^17.2.1",
     "ethers": "^6.15.0",
     "hardhat": "^2.26.1",
+    "hardhat-contract-sizer": "^2.10.0",
     "hardhat-gas-reporter": "^2.3.0",
     "solhint": "^6.0.0",
     "solidity-coverage": "^0.8.16",
@@ -34,6 +57,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0"
+    "@openzeppelin/contracts": "^5.4.0",
+    "@tracceaqua/contracts": "link:"
   }
 }

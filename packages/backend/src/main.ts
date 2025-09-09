@@ -1,68 +1,61 @@
-// src/main.ts
 import { NestFactory } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+  });
+
   const configService = app.get(ConfigService);
-  const logger = new Logger('Bootstrap');
+  const port = configService.get('PORT', 3001);
+  const environment = configService.get('NODE_ENV', 'development');
 
-  // Get configuration
-  const port = configService.get<number>('app.port') ?? 3000;
-  const environment = configService.get<string>('app.environment');
-  const appName = configService.get<string>('app.name');
-  const frontendUrl = configService.get<string>('app.frontendUrl');
-  const corsOrigin = configService.get<string[]>('app.cors.origin');
-
-  // Global prefix for all routes
-  app.setGlobalPrefix('api', {
-    exclude: ['/', '/health'],
-  });
-
-
-
-
-
-
-
-
-  // Enable CORS
-  app.enableCors({
-    origin: corsOrigin,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'Accept',
-      'Origin',
-      'X-Requested-With',
-    ],
-  });
-
-  // Global validation pipe
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // Strip unknown properties
-      forbidNonWhitelisted: true, // Throw error if unknown properties
-      transform: true, // Transform payloads to DTO instances
-      transformOptions: {
-        enableImplicitConversion: true, // Convert string to number, etc.
+  // Security middleware
+  app.use(helmet({
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
       },
-    }),
-  );
+    },
+  }));
 
+  // Compression middleware
+  app.use(compression());
 
+  // Global prefix
+  app.setGlobalPrefix('api', {
+    exclude: ['/health', '/'],
+  });
 
-  // Setup Swagger documentation
-  if (environment === 'development') {
+  // CORS configuration
+  app.enableCors({
+    origin: [
+      'http://localhost:3000',
+      'https://tracceaqua.vercel.app',
+      configService.get('CORS_ORIGIN'),
+      configService.get('FRONTEND_URL'),
+    ].filter(Boolean),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+  });
+
+  // Swagger documentation (only in development and staging)
+  if (environment !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('TracceAqua API')
       .setDescription('Blockchain Seafood Traceability System API Documentation')
-      .setVersion('1.0')
+      .setVersion('1.0.0')
       .addBearerAuth(
         {
           type: 'http',
@@ -75,15 +68,13 @@ async function bootstrap() {
         'JWT-auth',
       )
       .addTag('Authentication', 'User authentication and authorization')
-      .addTag('Supply Chain', 'Seafood supply chain traceability endpoints')
-      .addTag('Consumer', 'Public consumer-facing endpoints')
-      .addTag('Users', 'User management operations')
-      .addTag('Role Applications', 'Professional role application system')
-      .addTag('Admin', 'Administrative operations')
-      .addTag('Upload', 'File upload operations')
-      .addServer(`http://localhost:${port}`, 'Development server')
-      // Only add frontendUrl if it is defined
-      .addServer(frontendUrl ?? 'http://localhost:3000', 'Frontend server')
+      .addTag('Users', 'User management')
+      .addTag('Role Applications', 'Role application management')
+      .addTag('Conservation', 'Conservation data management')
+      .addTag('Supply Chain', 'Supply chain traceability')
+      .addTag('Files', 'File upload and IPFS management')
+      .addTag('Blockchain', 'Blockchain integration')
+      .addTag('Admin', 'Administrative functions')
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
@@ -95,39 +86,33 @@ async function bootstrap() {
       },
     });
 
-    logger.log(`📚 Swagger documentation available at: http://localhost:${port}/api/docs`);
+    console.log(`📚 API Documentation available at: http://localhost:${port}/api/docs`);
   }
 
-  // Start the application
+  // Global validation pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
+
+  // Graceful shutdown
+  app.enableShutdownHooks();
+
   await app.listen(port, '0.0.0.0');
 
-  // Startup messages
-  logger.log(`🚀 ${appName} is running!`);
-  logger.log(`🌍 Environment: ${environment}`);
-  logger.log(`🔗 Server: http://localhost:${port}`);
-  logger.log(`🎯 API Prefix: /api`);
-  logger.log(`🔄 CORS Origins: ${(corsOrigin ?? []).join(', ')}`);
-
-  if (environment === 'development') {
-    logger.log(`📋 Health Check: http://localhost:${port}/health`);
-    logger.log(`📊 API Documentation: http://localhost:${port}/api/docs`);
-  }
+  console.log(`🚀 TracceAqua Backend running on: http://localhost:${port}`);
+  console.log(`🌍 Environment: ${environment}`);
+  console.log(`📊 Health check: http://localhost:${port}/health`);
+  console.log(`🔗 API Base URL: http://localhost:${port}/api`);
 }
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
-});
-
 bootstrap().catch((error) => {
-  console.error('Failed to start application:', error);
+  console.error('❌ Application failed to start:', error);
   process.exit(1);
 });
-
-

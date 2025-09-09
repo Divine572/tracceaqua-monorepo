@@ -1,238 +1,259 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from './../prisma/prisma.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { PublicStatisticsDto } from './dto/public-statistics.dto';
-
-
-
 
 @Injectable()
 export class PublicStatisticsService {
+    private readonly logger = new Logger(PublicStatisticsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async getPublicStatistics(): Promise<PublicStatisticsDto> {
     try {
       const [
         totalProducts,
-        publicProducts,
-        totalStages,
-        totalTraces,
+          totalBatches,
+          sourceTypeStats,
+          stageStats,
+          sustainabilityStats,
+          speciesStats,
         feedbackStats,
-        topSpeciesResult,
-        sustainableCount,
-        recentProducts
+          recentActivity
       ] = await Promise.all([
-        // Total products in system
-        this.prisma.supplyChainRecord.count({
-          where: { status: { not: 'DELETED' } }
-        }),
-        
-        // Public products only
-        this.prisma.supplyChainRecord.count({
-          where: { 
-            isPublic: true,
-            status: { not: 'DELETED' }
-          }
-        }),
-        
-        // Total supply chain stages recorded
-        this.prisma.supplyChainStageHistory.count(),
-        
-        // Total traces (views of products)
-        this.prisma.productTrace.count(),
-        
-        // Consumer feedback statistics
-        this.prisma.consumerFeedback.aggregate({
-          _count: { id: true },
-          _avg: { rating: true },
-        }),
-        
-        // Most common species
-        this.prisma.supplyChainRecord.groupBy({
-          by: ['speciesName'],
-          where: { 
-            isPublic: true,
-            status: { not: 'DELETED' }
-          },
-          _count: { speciesName: true },
-          orderBy: { _count: { speciesName: 'desc' } },
-          take: 1,
-        }),
-        
-        // Products with sustainability certifications
-        this.prisma.supplyChainRecord.count({
-          where: {
-            isPublic: true,
-            status: { not: 'DELETED' },
-            OR: [
-              { certifications: { has: 'SUSTAINABLE_SEAFOOD' } },
-              { certifications: { has: 'ORGANIC_AQUACULTURE' } },
-              { certifications: { has: 'BAP_CERTIFIED' } },
-            ]
-          }
-        }),
-        
-        // Recent products for journey time calculation
-        this.prisma.supplyChainRecord.findMany({
-          where: { 
-            isPublic: true,
-            status: { not: 'DELETED' },
-            createdAt: { 
-              gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) // Last 90 days
-            }
-          },
-          include: {
-            stageHistory: {
-              orderBy: { updatedAt: 'desc' },
-              take: 1,
-            }
-          },
-          take: 100, // Sample size for performance
-        })
+          this.getTotalPublicProducts(),
+          this.getTotalBatches(),
+          this.getSourceTypeStatistics(),
+          this.getStageStatistics(),
+          this.getSustainabilityStatistics(),
+          this.getSpeciesStatistics(),
+          this.getFeedbackStatistics(),
+          this.getRecentActivity()
       ]);
 
-      // Calculate average journey time
-      const journeyTimes = recentProducts
-        .filter(p => p.stageHistory.length > 0)
-        .map(product => {
-          const lastStage = product.stageHistory[0];
-          const journeyTime = (lastStage.updatedAt.getTime() - product.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-          return Math.max(0, journeyTime); // Ensure positive values
-        });
-      
-      const averageJourneyTime = journeyTimes.length > 0
-        ? journeyTimes.reduce((sum, time) => sum + time, 0) / journeyTimes.length
-        : 14.0; // Default fallback
-
-      // Calculate verification rate
-      const totalStagesCount = totalStages || 1;
-      const verifiedStages = await this.prisma.supplyChainStageHistory.count({
-        where: { 
-          blockchainHash: { not: null }, // Consider blockchain hash as verification
+            return {
+                totalProducts,
+                totalBatches,
+                sourceTypeBreakdown: sourceTypeStats,
+                stageBreakdown: stageStats,
+                sustainability: sustainabilityStats,
+                topSpecies: speciesStats,
+                consumerFeedback: feedbackStats,
+                recentActivity,
+                lastUpdated: new Date().toISOString()
+            };
+        } catch (error) {
+            this.logger.error(`Failed to get public statistics: ${error.message}`);
+            throw error;
         }
-      });
-      const verificationRate = (verifiedStages / totalStagesCount) * 100;
+    }
 
-      const stats: PublicStatisticsDto = {
-        totalProducts: publicProducts, // Use public products for consumer-facing stats
-        totalStages,
-        averageJourneyTime: Number(averageJourneyTime.toFixed(1)),
-        verificationRate: Number(verificationRate.toFixed(1)),
-        totalTraces: totalTraces || 0,
-        averageRating: Number(feedbackStats._avg.rating?.toFixed(1) || 0),
-        topSpecies: topSpeciesResult[0]?.speciesName || 'Tilapia',
-        sustainableProducts: sustainableCount,
-      };
+    private async getTotalPublicProducts(): Promise<number> {
+        return this.prisma.supplyChainRecord.count({
+            where: { isPublic: true }
+        });
+    }
 
-      return stats;
-    } catch (error) {
-      console.error('Error calculating public statistics:', error);
+    private async getTotalBatches(): Promise<number> {
+        const result = await this.prisma.supplyChainRecord.findMany({
+            where: {
+                isPublic: true,
+                batchId: { not: null }
+            },
+            select: { batchId: true },
+            distinct: ['batchId']
+        });
+
+        return result.length;
+    }
+
+    private async getSourceTypeStatistics(): Promise<Record<string, number>> {
+        const stats = await this.prisma.supplyChainRecord.groupBy({
+            by: ['sourceType'],
+            where: { isPublic: true },
+            _count: { sourceType: true }
+        });
+
+        return stats.reduce((acc, item) => {
+            acc[item.sourceType] = item._count.sourceType;
+            return acc;
+        }, {} as Record<string, number>);
+    }
+
+    private async getStageStatistics(): Promise<Record<string, number>> {
+        const stats = await this.prisma.supplyChainRecord.groupBy({
+            by: ['currentStage'],
+            where: { isPublic: true },
+            _count: { currentStage: true }
+        });
+
+        return stats.reduce((acc, item) => {
+            acc[item.currentStage] = item._count.currentStage;
+            return acc;
+        }, {} as Record<string, number>);
+    }
+
+    private async getSustainabilityStatistics(): Promise<{
+        averageScore: number;
+        totalRated: number;
+        scoreDistribution: Record<string, number>;
+    }> {
+        const [avgResult, allScores] = await Promise.all([
+            this.prisma.supplyChainRecord.aggregate({
+                where: {
+                    isPublic: true,
+                    sustainabilityScore: { not: null }
+          },
+                _avg: { sustainabilityScore: true },
+                _count: { sustainabilityScore: true }
+            }),
+        this.prisma.supplyChainRecord.findMany({
+            where: {
+                isPublic: true,
+                sustainabilityScore: { not: null }
+          },
+            select: { sustainabilityScore: true }
+        })
+        ]);
+
+        // Create score distribution (0-20, 21-40, 41-60, 61-80, 81-100)
+        const scoreDistribution = allScores.reduce((acc, item) => {
+            const score = item.sustainabilityScore!;
+            let range: string;
       
-      // Return minimal stats if database queries fail
-      const fallbackCount = await this.prisma.supplyChainRecord.count({
-        where: { isPublic: true }
-      }).catch(() => 0);
+          if (score <= 20) range = '0-20';
+          else if (score <= 40) range = '21-40';
+          else if (score <= 60) range = '41-60';
+          else if (score <= 80) range = '61-80';
+          else range = '81-100';
+
+          acc[range] = (acc[range] || 0) + 1;
+          return acc;
+      }, {} as Record<string, number>);
+
+        return {
+            averageScore: avgResult._avg.sustainabilityScore || 0,
+            totalRated: avgResult._count.sustainabilityScore || 0,
+            scoreDistribution
+        };
+    }
+
+    private async getSpeciesStatistics(): Promise<Array<{ species: string; count: number }>> {
+        const stats = await this.prisma.supplyChainRecord.groupBy({
+            by: ['speciesName'],
+            where: { isPublic: true },
+            _count: { speciesName: true },
+            orderBy: { _count: { speciesName: 'desc' } },
+            take: 10 // Top 10 species
+        });
+
+        return stats.map(item => ({
+            species: item.speciesName,
+            count: item._count.speciesName
+        }));
+    }
+
+    private async getFeedbackStatistics(): Promise<{
+        totalReviews: number;
+        averageRating: number;
+        recentReviews: number;
+    }> {
+        const [totalAndAvg, recentCount] = await Promise.all([
+            this.prisma.consumerFeedback.aggregate({
+                where: { verified: true },
+                _count: { id: true },
+                _avg: { rating: true }
+            }),
+            this.prisma.consumerFeedback.count({
+                where: {
+                    verified: true,
+                    createdAt: {
+                        gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+                    }
+                }
+            })
+        ]);
 
       return {
-        totalProducts: fallbackCount,
-        totalStages: 0,
-        averageJourneyTime: 0,
-        verificationRate: 0,
-        totalTraces: 0,
-        averageRating: 0,
-        topSpecies: 'Unknown',
-        sustainableProducts: 0,
+          totalReviews: totalAndAvg._count.id,
+          averageRating: totalAndAvg._avg.rating || 0,
+          recentReviews: recentCount
       };
-    }
   }
 
-  async recordProductTrace(
-    productId: string,
-    ipAddress?: string,
-    userAgent?: string,
-    referer?: string,
-    location?: string
-  ): Promise<void> {
-    try {
-      // Verify product exists and is public
-      const product = await this.prisma.supplyChainRecord.findFirst({
-        where: { 
-          productId,
-          isPublic: true,
-          status: { not: 'DELETED' }
-        },
-      });
+    private async getRecentActivity(): Promise<{
+        newProductsThisWeek: number;
+        newProductsThisMonth: number;
+        activeStageUpdates: number;
+    }> {
+        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      if (product) {
-        await this.prisma.productTrace.create({
-          data: {
-            productId,
-            ipAddress,
-            userAgent,
-            referer,
-            location,
-          },
+        const [newProductsWeek, newProductsMonth, stageUpdates] = await Promise.all([
+            this.prisma.supplyChainRecord.count({
+                where: {
+          isPublic: true,
+                    createdAt: { gte: oneWeekAgo }
+                }
+            }),
+            this.prisma.supplyChainRecord.count({
+                where: {
+                    isPublic: true,
+                    createdAt: { gte: oneMonthAgo }
+                }
+        }),
+            this.prisma.supplyChainStageHistory.count({
+                where: {
+                    timestamp: { gte: oneWeekAgo }
+                }
+            })
+        ]);
+
+        return {
+            newProductsThisWeek: newProductsWeek,
+            newProductsThisMonth: newProductsMonth,
+            activeStageUpdates: stageUpdates
+        };
+  }
+
+    async getTopRatedProducts(limit: number = 10): Promise<Array<{
+        productId: string;
+        productName: string;
+        averageRating: number;
+        reviewCount: number;
+    }>> {
+        const productsWithRatings = await this.prisma.supplyChainRecord.findMany({
+            where: {
+                isPublic: true,
+                ConsumerFeedback: {
+                    some: { verified: true }
+                }
+        },
+            select: {
+                productId: true,
+                productName: true,
+                ConsumerFeedback: {
+                    where: { verified: true },
+                    select: { rating: true }
+                }
+            }
         });
-      }
-    } catch (error) {
-      // Silently fail trace recording to not impact user experience
-      console.warn('Failed to record product trace:', error);
-    }
-  }
 
-  async getFeaturedProducts(limit: number = 6): Promise<any[]> {
-    try {
-      // Get products with high ratings and multiple traces
-      const featuredProducts = await this.prisma.supplyChainRecord.findMany({
-        where: {
-          isPublic: true,
-          status: { not: 'DELETED' },
-          traces: { some: {} }, // Has been traced at least once
-        },
-        include: {
-          user: {
-            select: { profile: { select: { organization: true } }, role: true }
-          },
-          consumerFeedback: {
-            select: { rating: true },
-            take: 10, // Sample for average calculation
-          },
-          _count: {
-            select: { traces: true }
-          }
-        },
-        take: limit * 2, // Get extra to filter and sort
-      });
+        const ratingsData = productsWithRatings
+            .map(product => {
+                const ratings = product.ConsumerFeedback.map(f => f.rating);
+                const averageRating = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
 
-      // Calculate ratings and sort by engagement
-      const productsWithStats = featuredProducts.map(product => ({
-        productId: product.productId,
-        productName: product.productName,
-        speciesName: product.speciesName,
-        sourceType: product.sourceType,
-        qualityGrade: product.qualityGrade,
-        certifications: product.certifications,
-        creator: {
-          organization: product.user?.profile?.organization,
-          role: product.user?.role || 'UNKNOWN',
-        },
-        createdAt: product.createdAt.toISOString(),
-        traceCount: product._count.traces,
-        averageRating: product.consumerFeedback.length > 0
-          ? product.consumerFeedback.reduce((sum, f) => sum + f.rating, 0) / product.consumerFeedback.length
-          : 0,
-      }));
+                return {
+                    productId: product.productId,
+                  productName: product.productName || 'Unnamed Product',
+                  averageRating: Math.round(averageRating * 10) / 10,
+                  reviewCount: ratings.length
+              };
+          })
+          .filter(product => product.reviewCount >= 3) // At least 3 reviews
+          .sort((a, b) => b.averageRating - a.averageRating)
+          .slice(0, limit);
 
-      // Sort by engagement (traces + rating)
-      const sorted = productsWithStats.sort((a, b) => {
-        const scoreA = a.traceCount + (a.averageRating * 10);
-        const scoreB = b.traceCount + (b.averageRating * 10);
-        return scoreB - scoreA;
-      });
-
-      return sorted.slice(0, limit);
-    } catch (error) {
-      console.error('Error fetching featured products:', error);
-      return [];
-    }
+        return ratingsData;
   }
 }

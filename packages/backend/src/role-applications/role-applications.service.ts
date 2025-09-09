@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '../common/enums/user-role.enum';
-import { UserStatus } from '../common/enums/user-status.enum';
-import { ApplicationStatus } from '@prisma/client';
+import { UserStatus, ApplicationStatus } from '@prisma/client';
 import { CreateRoleApplicationDto } from './dto/create-role-application.dto';
 import { ReviewApplicationDto } from './dto/review-application.dto';
 import { UpdateApplicationDto } from './dto/update-role-application.dto';
@@ -104,7 +103,7 @@ export class RoleApplicationsService {
         // Update user status to show they have a pending application
         await this.prisma.user.update({
             where: { id: userId },
-            data: { status: UserStatus.PENDING }
+            data: { status: 'PENDING' as UserStatus }
         });
 
         console.log('✅ Role application submitted successfully');
@@ -349,7 +348,7 @@ export class RoleApplicationsService {
         // Update user status back to PENDING
         await this.prisma.user.update({
             where: { id: userId },
-            data: { status: UserStatus.PENDING }
+            data: { status: 'PENDING' as UserStatus }
         });
 
         console.log('✅ Application updated and resubmitted');

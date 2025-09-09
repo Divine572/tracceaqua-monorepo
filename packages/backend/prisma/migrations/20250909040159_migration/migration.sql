@@ -1,8 +1,8 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'RESEARCHER', 'FARMER', 'FISHERMAN', 'PROCESSOR', 'TRADER', 'RETAILER', 'CONSUMER');
+CREATE TYPE "UserRole" AS ENUM ('CONSUMER', 'RESEARCHER', 'FARMER', 'FISHERMAN', 'PROCESSOR', 'TRADER', 'RETAILER', 'ADMIN');
 
 -- CreateEnum
-CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'PENDING', 'SUSPENDED', 'REJECTED');
+CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'BANNED');
 
 -- CreateEnum
 CREATE TYPE "ApplicationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
@@ -64,7 +64,7 @@ CREATE TABLE "role_applications" (
 CREATE TABLE "admin_actions" (
     "id" TEXT NOT NULL,
     "adminId" TEXT NOT NULL,
-    "targetId" TEXT NOT NULL,
+    "targetId" TEXT,
     "action" TEXT NOT NULL,
     "description" TEXT,
     "metadata" JSONB,
@@ -116,15 +116,15 @@ CREATE TABLE "supply_chain_records" (
     "distributionData" JSONB,
     "retailData" JSONB,
     "currentStage" TEXT NOT NULL,
-    "qrCodeData" TEXT,
+    "productStatus" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "certifications" TEXT[],
+    "qualityMetrics" JSONB,
     "fileHashes" TEXT[],
+    "sustainabilityScore" DOUBLE PRECISION,
+    "isPublic" BOOLEAN NOT NULL DEFAULT false,
+    "tags" TEXT[],
     "dataHash" TEXT,
     "blockchainHash" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
-    "isPublic" BOOLEAN NOT NULL DEFAULT true,
-    "qualityGrade" TEXT,
-    "certifications" TEXT[],
-    "testResults" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -135,18 +135,13 @@ CREATE TABLE "supply_chain_records" (
 CREATE TABLE "supply_chain_stage_history" (
     "id" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
     "stage" TEXT NOT NULL,
-    "previousStage" TEXT,
-    "updatedBy" TEXT NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "notes" TEXT,
-    "stageData" JSONB,
-    "fileHashes" TEXT[],
     "location" TEXT,
-    "qualityGrade" TEXT,
-    "testResults" JSONB,
-    "blockchainHash" TEXT,
-    "dataHash" TEXT,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "notes" TEXT,
+    "data" JSONB,
+    "fileHashes" TEXT[],
 
     CONSTRAINT "supply_chain_stage_history_pkey" PRIMARY KEY ("id")
 );
@@ -155,30 +150,21 @@ CREATE TABLE "supply_chain_stage_history" (
 CREATE TABLE "consumer_feedback" (
     "id" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
-    "rating" SMALLINT NOT NULL,
+    "rating" INTEGER NOT NULL,
     "comment" TEXT,
-    "email" TEXT,
-    "wouldBuyAgain" BOOLEAN,
-    "location" TEXT,
-    "ipAddress" TEXT,
-    "userAgent" TEXT,
+    "consumerEmail" TEXT,
+    "consumerName" TEXT,
+    "purchaseLocation" TEXT,
+    "purchaseDate" TIMESTAMP(3),
+    "verified" BOOLEAN NOT NULL DEFAULT false,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "moderatedBy" TEXT,
+    "moderatedAt" TIMESTAMP(3),
+    "moderationNotes" TEXT,
+    "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "consumer_feedback_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "product_traces" (
-    "id" TEXT NOT NULL,
-    "productId" TEXT NOT NULL,
-    "ipAddress" TEXT,
-    "userAgent" TEXT,
-    "location" TEXT,
-    "referer" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "product_traces_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -215,13 +201,10 @@ CREATE INDEX "supply_chain_records_userId_idx" ON "supply_chain_records"("userId
 CREATE INDEX "supply_chain_records_productId_idx" ON "supply_chain_records"("productId");
 
 -- CreateIndex
-CREATE INDEX "supply_chain_records_batchId_idx" ON "supply_chain_records"("batchId");
+CREATE INDEX "supply_chain_records_sourceType_idx" ON "supply_chain_records"("sourceType");
 
 -- CreateIndex
 CREATE INDEX "supply_chain_records_currentStage_idx" ON "supply_chain_records"("currentStage");
-
--- CreateIndex
-CREATE INDEX "supply_chain_records_sourceType_idx" ON "supply_chain_records"("sourceType");
 
 -- CreateIndex
 CREATE INDEX "supply_chain_records_isPublic_idx" ON "supply_chain_records"("isPublic");
@@ -233,13 +216,22 @@ CREATE INDEX "supply_chain_records_createdAt_idx" ON "supply_chain_records"("cre
 CREATE INDEX "supply_chain_stage_history_productId_idx" ON "supply_chain_stage_history"("productId");
 
 -- CreateIndex
-CREATE INDEX "supply_chain_stage_history_updatedAt_idx" ON "supply_chain_stage_history"("updatedAt");
+CREATE INDEX "supply_chain_stage_history_userId_idx" ON "supply_chain_stage_history"("userId");
 
 -- CreateIndex
-CREATE INDEX "supply_chain_stage_history_stage_idx" ON "supply_chain_stage_history"("stage");
+CREATE INDEX "supply_chain_stage_history_timestamp_idx" ON "supply_chain_stage_history"("timestamp");
 
 -- CreateIndex
-CREATE INDEX "supply_chain_stage_history_updatedBy_idx" ON "supply_chain_stage_history"("updatedBy");
+CREATE INDEX "consumer_feedback_productId_idx" ON "consumer_feedback"("productId");
+
+-- CreateIndex
+CREATE INDEX "consumer_feedback_verified_idx" ON "consumer_feedback"("verified");
+
+-- CreateIndex
+CREATE INDEX "consumer_feedback_status_idx" ON "consumer_feedback"("status");
+
+-- CreateIndex
+CREATE INDEX "consumer_feedback_createdAt_idx" ON "consumer_feedback"("createdAt");
 
 -- AddForeignKey
 ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -254,7 +246,7 @@ ALTER TABLE "role_applications" ADD CONSTRAINT "role_applications_reviewedBy_fke
 ALTER TABLE "admin_actions" ADD CONSTRAINT "admin_actions_adminId_fkey" FOREIGN KEY ("adminId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "admin_actions" ADD CONSTRAINT "admin_actions_targetId_fkey" FOREIGN KEY ("targetId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "admin_actions" ADD CONSTRAINT "admin_actions_targetId_fkey" FOREIGN KEY ("targetId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "conservation_records" ADD CONSTRAINT "conservation_records_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -263,13 +255,10 @@ ALTER TABLE "conservation_records" ADD CONSTRAINT "conservation_records_userId_f
 ALTER TABLE "supply_chain_records" ADD CONSTRAINT "supply_chain_records_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "supply_chain_stage_history" ADD CONSTRAINT "supply_chain_stage_history_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "supply_chain_stage_history" ADD CONSTRAINT "supply_chain_stage_history_productId_fkey" FOREIGN KEY ("productId") REFERENCES "supply_chain_records"("productId") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "supply_chain_stage_history" ADD CONSTRAINT "supply_chain_stage_history_updatedBy_fkey" FOREIGN KEY ("updatedBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "consumer_feedback" ADD CONSTRAINT "consumer_feedback_productId_fkey" FOREIGN KEY ("productId") REFERENCES "supply_chain_records"("productId") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "product_traces" ADD CONSTRAINT "product_traces_productId_fkey" FOREIGN KEY ("productId") REFERENCES "supply_chain_records"("productId") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1,6 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsArray, IsNumber, IsBoolean, ValidateNested, IsDateString } from 'class-validator';
-import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsObject, IsArray, IsOptional, IsBoolean, IsEnum, IsNumber, Min, Max, MaxLength, MinLength } from 'class-validator';
 
 export enum SourceType {
   FARMED = 'FARMED',
@@ -8,15 +7,10 @@ export enum SourceType {
 }
 
 export enum SupplyChainStage {
-  // Farmed stages
   HATCHERY = 'HATCHERY',
   GROW_OUT = 'GROW_OUT',
   HARVEST = 'HARVEST',
-  
-  // Wild capture stages
   FISHING = 'FISHING',
-  
-  // Common stages
   PROCESSING = 'PROCESSING',
   DISTRIBUTION = 'DISTRIBUTION',
   RETAIL = 'RETAIL'
@@ -24,644 +18,275 @@ export enum SupplyChainStage {
 
 export enum ProductStatus {
   ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
   RECALLED = 'RECALLED',
-  EXPIRED = 'EXPIRED'
+  EXPIRED = 'EXPIRED',
+  SOLD = 'SOLD'
 }
-
-// ===== STAGE-SPECIFIC DATA CLASSES =====
-
-export class HatcheryDataDto {
-  @ApiProperty({ description: 'Hatchery facility name' })
-  @IsString()
-  @IsNotEmpty()
-  facilityName: string;
-
-  @ApiProperty({ description: 'License number' })
-  @IsString()
-  @IsNotEmpty()
-  licenseNumber: string;
-
-  @ApiProperty({ description: 'Species being hatched' })
-  @IsString()
-  @IsNotEmpty()
-  species: string;
-
-  @ApiProperty({ description: 'Batch size (number of larvae/juveniles)' })
-  @IsNumber()
-  batchSize: number;
-
-  @ApiProperty({ description: 'Hatchery start date' })
-  @IsDateString()
-  startDate: string;
-
-  @ApiPropertyOptional({ description: 'Feed type used' })
-  @IsOptional()
-  @IsString()
-  feedType?: string;
-
-  @ApiPropertyOptional({ description: 'Water quality parameters' })
-  @IsOptional()
-  waterQuality?: {
-    temperature: number;
-    salinity: number;
-    pH: number;
-    dissolvedOxygen: number;
-  };
-
-  @ApiPropertyOptional({ description: 'Survival rate percentage' })
-  @IsOptional()
-  @IsNumber()
-  survivalRate?: number;
-}
-
-export class GrowOutDataDto {
-  @ApiProperty({ description: 'Grow-out facility name' })
-  @IsString()
-  @IsNotEmpty()
-  facilityName: string;
-
-  @ApiProperty({ description: 'Pond/cage identifier' })
-  @IsString()
-  @IsNotEmpty()
-  pondId: string;
-
-  @ApiProperty({ description: 'Stocking date' })
-  @IsDateString()
-  stockingDate: string;
-
-  @ApiProperty({ description: 'Initial stocking density (per m²)' })
-  @IsNumber()
-  stockingDensity: number;
-
-  @ApiProperty({ description: 'Feed conversion ratio' })
-  @IsNumber()
-  feedConversionRatio: number;
-
-  @ApiPropertyOptional({ description: 'Growth period in days' })
-  @IsOptional()
-  @IsNumber()
-  growthPeriod?: number;
-
-  @ApiPropertyOptional({ description: 'Feeding schedule' })
-  @IsOptional()
-  @IsString()
-  feedingSchedule?: string;
-
-  @ApiPropertyOptional({ description: 'Health management records' })
-  @IsOptional()
-  healthRecords?: string[];
-}
-
-export class HarvestDataDto {
-  @ApiProperty({ description: 'Harvest date' })
-  @IsDateString()
-  harvestDate: string;
-
-  @ApiProperty({ description: 'Harvest method' })
-  @IsString()
-  @IsNotEmpty()
-  harvestMethod: string;
-
-  @ApiProperty({ description: 'Total harvest weight (kg)' })
-  @IsNumber()
-  totalWeight: number;
-
-  @ApiProperty({ description: 'Average weight per unit (g)' })
-  @IsNumber()
-  averageWeight: number;
-
-  @ApiProperty({ description: 'Number of units harvested' })
-  @IsNumber()
-  unitCount: number;
-
-  @ApiPropertyOptional({ description: 'Harvest location' })
-  @IsOptional()
-  @IsString()
-  location?: string;
-
-  @ApiPropertyOptional({ description: 'Quality grade' })
-  @IsOptional()
-  @IsString()
-  qualityGrade?: string;
-
-  @ApiPropertyOptional({ description: 'Storage conditions post-harvest' })
-  @IsOptional()
-  @IsString()
-  storageConditions?: string;
-}
-
-export class FishingDataDto {
-  @ApiProperty({ description: 'Fishing vessel name' })
-  @IsString()
-  @IsNotEmpty()
-  vesselName: string;
-
-  @ApiProperty({ description: 'Vessel registration number' })
-  @IsString()
-  @IsNotEmpty()
-  vesselRegistration: string;
-
-  @ApiProperty({ description: 'Captain/skipper name' })
-  @IsString()
-  @IsNotEmpty()
-  captainName: string;
-
-  @ApiProperty({ description: 'Fishing date' })
-  @IsDateString()
-  fishingDate: string;
-
-  @ApiProperty({ description: 'Fishing location (GPS coordinates)' })
-  location: {
-    latitude: number;
-    longitude: number;
-    area: string;
-  };
-
-  @ApiProperty({ description: 'Fishing method used' })
-  @IsString()
-  @IsNotEmpty()
-  fishingMethod: string;
-
-  @ApiProperty({ description: 'Total catch weight (kg)' })
-  @IsNumber()
-  totalCatch: number;
-
-  @ApiPropertyOptional({ description: 'Gear specifications' })
-  @IsOptional()
-  @IsString()
-  gearSpecs?: string;
-
-  @ApiPropertyOptional({ description: 'Fishing duration in hours' })
-  @IsOptional()
-  @IsNumber()
-  duration?: number;
-
-  @ApiPropertyOptional({ description: 'Bycatch information' })
-  @IsOptional()
-  @IsString()
-  bycatchNotes?: string;
-}
-
-
-
-
-
-export class ProcessingDataDto {
-  @ApiProperty({ description: 'Processing facility name' })
-  @IsString()
-  @IsNotEmpty()
-  facilityName: string;
-
-  @ApiProperty({ description: 'Processing license number' })
-  @IsString()
-  @IsNotEmpty()
-  licenseNumber: string;
-
-  @ApiProperty({ description: 'Processing date' })
-  @IsDateString()
-  processingDate: string;
-
-  @ApiProperty({ description: 'Processing methods used' })
-  @IsArray()
-  @IsString({ each: true })
-  processingMethods: string[];
-
-  @ApiProperty({ description: 'Input weight (kg)' })
-  @IsNumber()
-  inputWeight: number;
-
-  @ApiProperty({ description: 'Output weight (kg)' })
-  @IsNumber()
-  outputWeight: number;
-
-  @ApiProperty({ description: 'Processing yield percentage' })
-  @IsNumber()
-  yieldPercentage: number;
-
-  @ApiPropertyOptional({ description: 'Packaging type' })
-  @IsOptional()
-  @IsString()
-  packagingType?: string;
-
-  @ApiPropertyOptional({ description: 'Preservation method' })
-  @IsOptional()
-  @IsString()
-  preservationMethod?: string;
-
-  @ApiPropertyOptional({ description: 'Quality control tests performed' })
-  @IsOptional()
-  @IsArray()
-  qualityTests?: string[];
-
-  @ApiPropertyOptional({ description: 'Expiry date' })
-  @IsOptional()
-  @IsDateString()
-  expiryDate?: string;
-}
-
-
-
-
-
-export class DistributionDataDto {
-  @ApiProperty({ description: 'Distribution company name' })
-  @IsString()
-  @IsNotEmpty()
-  distributorName: string;
-
-  @ApiProperty({ description: 'Transport vehicle ID' })
-  @IsString()
-  @IsNotEmpty()
-  vehicleId: string;
-
-  @ApiProperty({ description: 'Driver name' })
-  @IsString()
-  @IsNotEmpty()
-  driverName: string;
-
-  @ApiProperty({ description: 'Departure date and time' })
-  @IsDateString()
-  departureDateTime: string;
-
-  @ApiProperty({ description: 'Arrival date and time' })
-  @IsDateString()
-  arrivalDateTime: string;
-
-  @ApiProperty({ description: 'Origin location' })
-  @IsString()
-  @IsNotEmpty()
-  originLocation: string;
-
-  @ApiProperty({ description: 'Destination location' })
-  @IsString()
-  @IsNotEmpty()
-  destinationLocation: string;
-
-  @ApiProperty({ description: 'Transport temperature (°C)' })
-  @IsNumber()
-  transportTemperature: number;
-
-  @ApiPropertyOptional({ description: 'Route taken' })
-  @IsOptional()
-  @IsString()
-  route?: string;
-
-  @ApiPropertyOptional({ description: 'Cold chain monitoring data' })
-  @IsOptional()
-  coldChainData?: {
-    minTemp: number;
-    maxTemp: number;
-    avgTemp: number;
-    temperatureBreaches: number;
-  };
-
-  @ApiPropertyOptional({ description: 'Delivery confirmation' })
-  @IsOptional()
-  @IsString()
-  deliveryConfirmation?: string;
-}
-
-
-export class RetailDataDto {
-  @ApiProperty({ description: 'Retail store name' })
-  @IsString()
-  @IsNotEmpty()
-  storeName: string;
-
-  @ApiProperty({ description: 'Store location/address' })
-  @IsString()
-  @IsNotEmpty()
-  storeLocation: string;
-
-  @ApiProperty({ description: 'Received date' })
-  @IsDateString()
-  receivedDate: string;
-
-  @ApiProperty({ description: 'Display method' })
-  @IsString()
-  @IsNotEmpty()
-  displayMethod: string;
-
-  @ApiProperty({ description: 'Storage temperature (°C)' })
-  @IsNumber()
-  storageTemperature: number;
-
-  @ApiProperty({ description: 'Retail price per kg' })
-  @IsNumber()
-  pricePerKg: number;
-
-  @ApiPropertyOptional({ description: 'Best before date' })
-  @IsOptional()
-  @IsDateString()
-  bestBeforeDate?: string;
-
-  @ApiPropertyOptional({ description: 'Promotional offers' })
-  @IsOptional()
-  @IsString()
-  promotions?: string;
-
-  @ApiPropertyOptional({ description: 'Customer feedback' })
-  @IsOptional()
-  @IsString()
-  customerFeedback?: string;
-}
-
-
-
-
-// ===== MAIN DTO CLASSES =====
 
 export class CreateSupplyChainRecordDto {
-  @ApiProperty({ description: 'Unique product identifier' })
+  @ApiProperty({
+    description: 'Unique product identifier',
+    example: 'PROD-2024-001',
+    minLength: 5,
+    maxLength: 50
+  })
   @IsString()
   @IsNotEmpty()
+  @MinLength(5)
+  @MaxLength(50)
   productId: string;
 
-  @ApiProperty({ description: 'Product name' })
+  @ApiPropertyOptional({
+    description: 'Batch identifier for grouping products',
+    example: 'BATCH-2024-Q1-001',
+    maxLength: 50
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  productName: string;
+  @MaxLength(50)
+  batchId?: string;
 
-  @ApiProperty({ description: 'Species name' })
-  @IsString()
-  @IsNotEmpty()
-  speciesName: string;
-
-  @ApiProperty({ description: 'Source type', enum: SourceType })
+  @ApiProperty({
+    description: 'Source type of the product',
+    enum: SourceType,
+    example: SourceType.FARMED
+  })
   @IsEnum(SourceType)
   sourceType: SourceType;
 
-  @ApiProperty({ description: 'Initial stage', enum: SupplyChainStage })
-  @IsEnum(SupplyChainStage)
-  initialStage: SupplyChainStage;
+  @ApiProperty({
+    description: 'Scientific name of the species',
+    example: 'Crassostrea gasar',
+    maxLength: 100
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  speciesName: string;
 
-  @ApiPropertyOptional({ description: 'Product description' })
+  @ApiPropertyOptional({
+    description: 'Commercial product name',
+    example: 'Premium Lagos Oysters',
+    maxLength: 100
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
+  productName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Product description',
+    example: 'Fresh oysters from sustainable aquaculture farms in Lagos',
+    maxLength: 500
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   productDescription?: string;
 
-  @ApiPropertyOptional({ description: 'Batch identifier for grouping' })
+  @ApiProperty({
+    description: 'Current stage in the supply chain',
+    enum: SupplyChainStage,
+    example: SupplyChainStage.HATCHERY
+  })
+  @IsEnum(SupplyChainStage)
+  currentStage: SupplyChainStage;
+
+  @ApiPropertyOptional({
+    description: 'Location information',
+    example: 'Lagos State Aquaculture Farm, Nigeria',
+    maxLength: 200
+  })
   @IsOptional()
   @IsString()
-  batchId?: string;
+  @MaxLength(200)
+  location?: string;
 
-  @ApiPropertyOptional({ description: 'Initial quality grade' })
+  // Stage-specific data
+  @ApiPropertyOptional({
+    description: 'Hatchery stage data',
+    example: {
+      hatcheryName: 'Lagos Hatchery',
+      spawningDate: '2024-01-15',
+      broodstockSource: 'Local wild stock',
+      larvaeCount: 1000000,
+      mortalityRate: 0.15,
+      feedType: 'Natural phytoplankton',
+      waterQuality: {
+        temperature: 28,
+        salinity: 20,
+        pH: 8.1
+      }
+    }
+  })
   @IsOptional()
-  @IsString()
-  qualityGrade?: string;
+  @IsObject()
+  hatcheryData?: any;
 
-  @ApiPropertyOptional({ description: 'Certifications' })
+  @ApiPropertyOptional({
+    description: 'Grow-out stage data',
+    example: {
+      farmName: 'Lagos Bay Farm',
+      stockingDate: '2024-02-15',
+      stockingDensity: 500,
+      growthRate: 2.5,
+      feedConversionRatio: 1.8,
+      mortalityRate: 0.05,
+      harvestSize: 75,
+      cultureMethod: 'Suspended culture'
+    }
+  })
+  @IsOptional()
+  @IsObject()
+  growOutData?: any;
+
+  @ApiPropertyOptional({
+    description: 'Harvest stage data',
+    example: {
+      harvestDate: '2024-06-15',
+      harvestQuantity: 2500,
+      harvestMethod: 'Hand picking',
+      qualityGrade: 'Premium',
+      shellLength: 85,
+      meatYield: 0.12,
+      harvestLocation: 'Farm Site A'
+    }
+  })
+  @IsOptional()
+  @IsObject()
+  harvestData?: any;
+
+  @ApiPropertyOptional({
+    description: 'Fishing stage data (for wild-capture)',
+    example: {
+      fishingDate: '2024-06-15',
+      vesselName: 'Lagos Fisher I',
+      vesselRegistration: 'LOS-001',
+      captainName: 'John Doe',
+      fishingMethod: 'Diving',
+      catchQuantity: 1000,
+      fishingArea: 'Lagos Lagoon Zone A',
+      gpsCoordinates: '6.5244, 3.3792'
+    }
+  })
+  @IsOptional()
+  @IsObject()
+  fishingData?: any;
+
+  @ApiPropertyOptional({
+    description: 'Processing stage data',
+    example: {
+      processingDate: '2024-06-16',
+      processingFacility: 'Lagos Seafood Processing',
+      processingType: 'Fresh shucking',
+      packageType: 'Vacuum sealed',
+      packageSize: '500g',
+      expiryDate: '2024-06-23',
+      storageTemperature: 4,
+      qualityChecks: ['Visual inspection', 'Smell test', 'Size grading']
+    }
+  })
+  @IsOptional()
+  @IsObject()
+  processingData?: any;
+
+  @ApiPropertyOptional({
+    description: 'Distribution stage data',
+    example: {
+      distributionDate: '2024-06-17',
+      distributor: 'Lagos Seafood Distributors',
+      transportMethod: 'Refrigerated truck',
+      temperature: 2,
+      destination: 'Lagos Central Market',
+      deliveryDate: '2024-06-17',
+      trackingNumber: 'TRACK-001'
+    }
+  })
+  @IsOptional()
+  @IsObject()
+  distributionData?: any;
+
+  @ApiPropertyOptional({
+    description: 'Retail stage data',
+    example: {
+      retailer: 'Fresh Market Lagos',
+      receivedDate: '2024-06-17',
+      displayMethod: 'Ice display',
+      sellByDate: '2024-06-20',
+      pricePerKg: 2500,
+      inventory: 50
+    }
+  })
+  @IsOptional()
+  @IsObject()
+  retailData?: any;
+
+  @ApiPropertyOptional({
+    description: 'Product certifications',
+    example: ['Organic', 'Sustainable Aquaculture', 'HACCP']
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   certifications?: string[];
 
-  @ApiPropertyOptional({ description: 'File hashes for supporting documents' })
+  @ApiPropertyOptional({
+    description: 'Quality metrics',
+    example: {
+      freshness: 9.5,
+      appearance: 9.0,
+      smell: 9.2,
+      texture: 8.8,
+      overallQuality: 9.1
+    }
+  })
+  @IsOptional()
+  @IsObject()
+  qualityMetrics?: any;
+
+  @ApiPropertyOptional({
+    description: 'IPFS hashes of uploaded files',
+    example: ['QmXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXx']
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   fileHashes?: string[];
 
-  @ApiPropertyOptional({ description: 'Whether product is publicly traceable' })
+  @ApiPropertyOptional({
+    description: 'Sustainability score (0-100)',
+    example: 85,
+    minimum: 0,
+    maximum: 100
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  sustainabilityScore?: number;
+
+  @ApiPropertyOptional({
+    description: 'Whether the product is publicly traceable',
+    example: true
+  })
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
 
-  // Stage-specific data (only provide data for the initial stage)
-  @ApiPropertyOptional({ description: 'Hatchery data (for FARMED products starting at HATCHERY)' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => HatcheryDataDto)
-  hatcheryData?: HatcheryDataDto;
-
-  @ApiPropertyOptional({ description: 'Grow-out data (for FARMED products starting at GROW_OUT)' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => GrowOutDataDto)
-  growOutData?: GrowOutDataDto;
-
-  @ApiPropertyOptional({ description: 'Harvest data (for products starting at HARVEST)' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => HarvestDataDto)
-  harvestData?: HarvestDataDto;
-
-  @ApiPropertyOptional({ description: 'Fishing data (for WILD_CAPTURE products)' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => FishingDataDto)
-  fishingData?: FishingDataDto;
-
-  @ApiPropertyOptional({ description: 'Processing data (for products starting at PROCESSING)' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ProcessingDataDto)
-  processingData?: ProcessingDataDto;
-
-  @ApiPropertyOptional({ description: 'Distribution data (for products starting at DISTRIBUTION)' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => DistributionDataDto)
-  distributionData?: DistributionDataDto;
-
-  @ApiPropertyOptional({ description: 'Retail data (for products starting at RETAIL)' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => RetailDataDto)
-  retailData?: RetailDataDto;
-}
-
-export class UpdateSupplyChainStageDto {
-  @ApiProperty({ description: 'New stage', enum: SupplyChainStage })
-  @IsEnum(SupplyChainStage)
-  stage: SupplyChainStage;
-
-  @ApiPropertyOptional({ description: 'Stage update notes' })
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
-  @ApiPropertyOptional({ description: 'Quality grade at this stage' })
-  @IsOptional()
-  @IsString()
-  qualityGrade?: string;
-
-  @ApiPropertyOptional({ description: 'Additional certifications obtained' })
+  @ApiPropertyOptional({
+    description: 'Product tags for categorization',
+    example: ['premium', 'local', 'sustainable']
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  newCertifications?: string[];
+  tags?: string[];
 
-  @ApiPropertyOptional({ description: 'File hashes for stage documentation' })
+  @ApiPropertyOptional({
+    description: 'Whether to upload the complete record data to IPFS',
+    example: true
+  })
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  fileHashes?: string[];
-
-  // Stage-specific data
-  @ApiPropertyOptional({ description: 'Hatchery data' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => HatcheryDataDto)
-  hatcheryData?: HatcheryDataDto;
-
-  @ApiPropertyOptional({ description: 'Grow-out data' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => GrowOutDataDto)
-  growOutData?: GrowOutDataDto;
-
-  @ApiPropertyOptional({ description: 'Harvest data' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => HarvestDataDto)
-  harvestData?: HarvestDataDto;
-
-  @ApiPropertyOptional({ description: 'Fishing data' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => FishingDataDto)
-  fishingData?: FishingDataDto;
-
-  @ApiPropertyOptional({ description: 'Processing data' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ProcessingDataDto)
-  processingData?: ProcessingDataDto;
-
-  @ApiPropertyOptional({ description: 'Distribution data' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => DistributionDataDto)
-  distributionData?: DistributionDataDto;
-
-  @ApiPropertyOptional({ description: 'Retail data' })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => RetailDataDto)
-  retailData?: RetailDataDto;
-}
-
-// ===== RESPONSE DTO CLASSES =====
-
-export class SupplyChainRecordResponseDto {
-  @ApiProperty({ description: 'Record ID' })
-  id: string;
-
-  @ApiProperty({ description: 'Product ID' })
-  productId: string;
-
-  @ApiProperty({ description: 'Product name' })
-  productName: string;
-
-  @ApiProperty({ description: 'Species name' })
-  speciesName: string;
-
-  @ApiProperty({ description: 'User ID of creator' })
-  userId: string;
-
-  @ApiProperty({ description: 'Batch ID' })
-  batchId?: string;
-
-  @ApiProperty({ description: 'Source type', enum: SourceType })
-  sourceType: SourceType;
-
-  @ApiProperty({ description: 'Product description' })
-  productDescription?: string;
-
-  @ApiProperty({ description: 'Current stage', enum: SupplyChainStage })
-  currentStage: SupplyChainStage;
-
-  @ApiProperty({ description: 'QR code data' })
-  qrCodeData?: string;
-
-  @ApiProperty({ description: 'File hashes' })
-  fileHashes: string[];
-
-  @ApiProperty({ description: 'Data hash for blockchain' })
-  dataHash?: string;
-
-  @ApiProperty({ description: 'Blockchain transaction hash' })
-  blockchainHash?: string;
-
-  @ApiProperty({ description: 'Record status', enum: ProductStatus })
-  status: ProductStatus;
-
-  @ApiProperty({ description: 'Is publicly traceable' })
-  isPublic: boolean;
-
-  @ApiProperty({ description: 'Quality grade' })
-  qualityGrade?: string;
-
-  @ApiProperty({ description: 'Certifications' })
-  certifications: string[];
-
-  @ApiProperty({ description: 'Creation timestamp' })
-  createdAt: Date;
-
-  @ApiProperty({ description: 'Last update timestamp' })
-  updatedAt: Date;
-
-  // Stage-specific data
-  @ApiPropertyOptional({ description: 'Hatchery data' })
-  hatcheryData?: HatcheryDataDto;
-
-  @ApiPropertyOptional({ description: 'Grow-out data' })
-  growOutData?: GrowOutDataDto;
-
-  @ApiPropertyOptional({ description: 'Harvest data' })
-  harvestData?: HarvestDataDto;
-
-  @ApiPropertyOptional({ description: 'Fishing data' })
-  fishingData?: FishingDataDto;
-
-  @ApiPropertyOptional({ description: 'Processing data' })
-  processingData?: ProcessingDataDto;
-
-  @ApiPropertyOptional({ description: 'Distribution data' })
-  distributionData?: DistributionDataDto;
-
-  @ApiPropertyOptional({ description: 'Retail data' })
-  retailData?: RetailDataDto;
-
-  // Creator information
-  @ApiProperty({ description: 'Creator profile' })
-  creator: {
-    id: string;
-    firstName?: string;
-    lastName?: string;
-    organization?: string;
-    role: string;
-  };
-}
-
-
-
-export class ProductTraceabilityDto {
-  @ApiProperty({ description: 'Product information' })
-  product: SupplyChainRecordResponseDto;
-
-  @ApiProperty({ description: 'Stage history' })
-  stageHistory: Array<{
-    stage: SupplyChainStage;
-    updatedBy: string;
-    updatedAt: Date;
-    notes: string | null;
-    stakeholder: {
-      id: string;
-      name?: string;
-      organization: string | null;
-      role: string;
-    };
-  }>;
-
-  @ApiProperty({ description: 'Current status summary' })
-  summary: {
-    totalStages: number;
-    currentStageIndex: number;
-    daysInSupplyChain: number;
-    lastUpdated: Date;
-    totalStakeholders: number; 
-  };
+  @IsBoolean()
+  uploadToIPFS?: boolean;
 }

@@ -1,220 +1,137 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsArray, IsNumber, IsDateString, ValidateNested } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export enum SamplingMethod {
-  TRAWLING = 'TRAWLING',
-  GILLNET = 'GILLNET',
-  HANDLINE = 'HANDLINE',
-  TRAP = 'TRAP',
-  DIVING = 'DIVING',
-  SEINE = 'SEINE',
-  OTHER = 'OTHER'
-}
-
-export enum WaterBody {
-  LAGOS_LAGOON = 'LAGOS_LAGOON',
-  LEKKI_LAGOON = 'LEKKI_LAGOON',
-  ATLANTIC_OCEAN = 'ATLANTIC_OCEAN',
-  NIGER_DELTA = 'NIGER_DELTA',
-  CROSS_RIVER = 'CROSS_RIVER',
-  OTHER = 'OTHER'
-}
-
-export class LocationDataDto {
-  @ApiProperty({ description: 'GPS Latitude coordinate' })
-  @IsNumber({}, { message: 'Latitude must be a valid number' })
-  latitude: number;
-
-  @ApiProperty({ description: 'GPS Longitude coordinate' })
-  @IsNumber({}, { message: 'Longitude must be a valid number' })
-  longitude: number;
-
-  @ApiProperty({ description: 'Water body/marine zone', enum: WaterBody })
-  @IsEnum(WaterBody, { message: 'Invalid water body selected' })
-  waterBody: WaterBody;
-
-  @ApiPropertyOptional({ description: 'Additional location description' })
-  @IsOptional()
-  @IsString()
-  locationDescription?: string;
-
-  @ApiProperty({ description: 'Water depth in meters' })
-  @IsNumber({}, { message: 'Depth must be a valid number' })
-  depth: number;
-
-  @ApiProperty({ description: 'Water temperature in Celsius' })
-  @IsNumber({}, { message: 'Temperature must be a valid number' })
-  temperature: number;
-
-  @ApiPropertyOptional({ description: 'Salinity level (ppt)' })
-  @IsOptional()
-  @IsNumber({}, { message: 'Salinity must be a valid number' })
-  salinity?: number;
-
-  @ApiPropertyOptional({ description: 'pH level' })
-  @IsOptional()
-  @IsNumber({}, { message: 'pH must be a valid number' })
-  ph?: number;
-}
-
-export class SpeciesDataDto {
-  @ApiProperty({ description: 'Species common name' })
-  @IsString({ message: 'Species name is required' })
-  @IsNotEmpty({ message: 'Species name cannot be empty' })
-  speciesName: string;
-
-  @ApiPropertyOptional({ description: 'Scientific name if known' })
-  @IsOptional()
-  @IsString()
-  scientificName?: string;
-
-  @ApiProperty({ description: 'Total number of specimens collected' })
-  @IsNumber({}, { message: 'Specimen count must be a valid number' })
-  @Transform(({ value }) => parseInt(value))
-  specimenCount: number;
-
-  @ApiProperty({ description: 'Total weight in grams' })
-  @IsNumber({}, { message: 'Total weight must be a valid number' })
-  totalWeight: number;
-
-  @ApiPropertyOptional({ description: 'Average length in centimeters' })
-  @IsOptional()
-  @IsNumber({}, { message: 'Average length must be a valid number' })
-  averageLength?: number;
-
-  @ApiPropertyOptional({ description: 'Maturity stage observations' })
-  @IsOptional()
-  @IsString()
-  maturityStage?: string;
-
-  @ApiPropertyOptional({ description: 'Additional species notes' })
-  @IsOptional()
-  @IsString()
-  notes?: string;
-}
-
-export class SamplingDataDto {
-  @ApiProperty({ description: 'Sampling method used', enum: SamplingMethod })
-  @IsEnum(SamplingMethod, { message: 'Invalid sampling method' })
-  method: SamplingMethod;
-
-  @ApiProperty({ description: 'Date and time of sampling' })
-  @IsDateString({}, { message: 'Invalid sampling date format' })
-  samplingDate: string;
-
-  @ApiProperty({ description: 'Duration of sampling in minutes' })
-  @IsNumber({}, { message: 'Duration must be a valid number' })
-  duration: number;
-
-  @ApiPropertyOptional({ description: 'Gear specifications used' })
-  @IsOptional()
-  @IsString()
-  gearSpecifications?: string;
-
-  @ApiPropertyOptional({ description: 'Mesh size if applicable (mm)' })
-  @IsOptional()
-  @IsNumber({}, { message: 'Mesh size must be a valid number' })
-  meshSize?: number;
-
-  @ApiPropertyOptional({ description: 'Effort description' })
-  @IsOptional()
-  @IsString()
-  effortDescription?: string;
-
-  @ApiPropertyOptional({ description: 'Bycatch observations' })
-  @IsOptional()
-  @IsString()
-  bycatchNotes?: string;
-}
-
-export class LabTestDto {
-  @ApiProperty({ description: 'Type of test conducted' })
-  @IsString({ message: 'Test type is required' })
-  @IsNotEmpty({ message: 'Test type cannot be empty' })
-  testType: string;
-
-  @ApiProperty({ description: 'Test result value' })
-  @IsString({ message: 'Test result is required' })
-  @IsNotEmpty({ message: 'Test result cannot be empty' })
-  result: string;
-
-  @ApiProperty({ description: 'Unit of measurement' })
-  @IsString({ message: 'Unit is required' })
-  @IsNotEmpty({ message: 'Unit cannot be empty' })
-  unit: string;
-
-  @ApiPropertyOptional({ description: 'Reference range or standard' })
-  @IsOptional()
-  @IsString()
-  referenceRange?: string;
-
-  @ApiPropertyOptional({ description: 'Test method used' })
-  @IsOptional()
-  @IsString()
-  method?: string;
-
-  @ApiProperty({ description: 'Date test was conducted' })
-  @IsDateString({}, { message: 'Invalid test date format' })
-  testDate: string;
-
-  @ApiPropertyOptional({ description: 'Laboratory or facility name' })
-  @IsOptional()
-  @IsString()
-  laboratory?: string;
-
-  @ApiPropertyOptional({ description: 'Additional test notes' })
-  @IsOptional()
-  @IsString()
-  notes?: string;
-}
+import { IsString, IsNotEmpty, IsObject, IsArray, IsOptional, IsBoolean, MaxLength, MinLength } from 'class-validator';
 
 export class CreateConservationRecordDto {
-  @ApiProperty({ description: 'Unique sampling ID' })
-  @IsString({ message: 'Sampling ID is required' })
-  @IsNotEmpty({ message: 'Sampling ID cannot be empty' })
+  @ApiProperty({
+    description: 'Unique sampling identifier',
+    example: 'SAMPLE-2024-001',
+    minLength: 5,
+    maxLength: 50
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(5)
+  @MaxLength(50)
   samplingId: string;
 
-  @ApiProperty({ description: 'Location and environmental data' })
-  @ValidateNested()
-  @Type(() => LocationDataDto)
-  locationData: LocationDataDto;
+  @ApiProperty({
+    description: 'Location and environmental data',
+    example: {
+      latitude: 6.5244,
+      longitude: 3.3792,
+      waterBody: 'Lagos Lagoon',
+      depth: 5.2,
+      temperature: 28.5,
+      salinity: 15.2,
+      pH: 7.8,
+      oxygenLevel: 6.5,
+      turbidity: 12.3
+    }
+  })
+  @IsObject()
+  @IsNotEmpty()
+  locationData: any;
 
-  @ApiProperty({ description: 'Species identification data' })
-  @ValidateNested()
-  @Type(() => SpeciesDataDto)
-  speciesData: SpeciesDataDto;
+  @ApiProperty({
+    description: 'Species identification and count data',
+    example: {
+      primarySpecies: 'Crassostrea gasar',
+      commonName: 'West African Oyster',
+      totalCount: 245,
+      sizeDistribution: {
+        small: 45,
+        medium: 120,
+        large: 80
+      },
+      condition: 'Healthy',
+      reproductiveStage: 'Mature'
+    }
+  })
+  @IsObject()
+  @IsNotEmpty()
+  speciesData: any;
 
-  @ApiProperty({ description: 'Sampling methodology data' })
-  @ValidateNested()
-  @Type(() => SamplingDataDto)
-  samplingData: SamplingDataDto;
+  @ApiProperty({
+    description: 'Sampling methods and procedures',
+    example: {
+      method: 'Quadrat sampling',
+      quadratSize: '1m x 1m',
+      numberOfQuadrats: 10,
+      samplingDuration: 120,
+      equipment: ['GPS', 'Water quality meter', 'Collection bags'],
+      protocol: 'Standard benthic sampling protocol'
+    }
+  })
+  @IsObject()
+  @IsNotEmpty()
+  samplingData: any;
 
-  @ApiPropertyOptional({ description: 'Array of lab test results', type: [LabTestDto] })
+  @ApiPropertyOptional({
+    description: 'Laboratory test results',
+    example: {
+      microbiology: {
+        totalColiformCount: 150,
+        eColiCount: 5,
+        salmonellaPresent: false
+      },
+      chemistry: {
+        heavyMetals: {
+          mercury: 0.02,
+          lead: 0.01,
+          cadmium: 0.005
+        },
+        pesticides: 'Not detected'
+      }
+    }
+  })
   @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => LabTestDto)
-  labTests?: LabTestDto[];
+  @IsObject()
+  labTests?: any;
 
-  @ApiPropertyOptional({ description: 'Array of uploaded file IPFS hashes' })
+  @ApiPropertyOptional({
+    description: 'IPFS hashes of uploaded files',
+    example: ['QmXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXx']
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   fileHashes?: string[];
 
-  @ApiPropertyOptional({ description: 'Additional researcher notes' })
+  @ApiPropertyOptional({
+    description: 'Additional notes from the researcher',
+    example: 'High oyster density observed. Water quality within acceptable parameters.',
+    maxLength: 1000
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   researcherNotes?: string;
 
-  @ApiPropertyOptional({ description: 'Weather conditions during sampling' })
+  @ApiPropertyOptional({
+    description: 'Weather conditions during sampling',
+    example: 'Clear sky, light breeze, 29°C air temperature',
+    maxLength: 200
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   weatherConditions?: string;
 
-  @ApiPropertyOptional({ description: 'Tidal conditions during sampling' })
+  @ApiPropertyOptional({
+    description: 'Tidal conditions during sampling',
+    example: 'High tide, 1.2m above mean sea level',
+    maxLength: 200
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   tidalConditions?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether to upload the complete record data to IPFS',
+    example: true
+  })
+  @IsOptional()
+  @IsBoolean()
+  uploadToIPFS?: boolean;
 }

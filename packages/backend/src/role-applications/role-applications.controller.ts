@@ -1,4 +1,3 @@
-// packages/backend/src/role-applications/role-applications.controller.ts
 import {
     Controller,
     Get,

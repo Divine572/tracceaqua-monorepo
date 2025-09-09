@@ -1,22 +1,56 @@
 {
   "name": "tracceaqua-monorepo",
+  "version": "1.0.0",
+  "description": "TracceAqua - Blockchain Seafood Traceability System",
+  "author": "TracceAqua Team",
+  "license": "MIT",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
-    "clean": "turbo run clean",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "dev": "concurrently \"pnpm --filter backend start:dev\" \"pnpm --filter frontend dev\" \"pnpm --filter contracts node\"",
+    "build": "pnpm --filter backend build && pnpm --filter frontend build && pnpm --filter contracts build",
+    "start": "concurrently \"pnpm --filter backend start:prod\" \"pnpm --filter frontend start\"",
+    "test": "pnpm --filter backend test && pnpm --filter contracts test",
+    "test:e2e": "pnpm --filter backend test:e2e",
+    "lint": "pnpm --filter backend lint && pnpm --filter frontend lint && pnpm --filter contracts lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "clean": "pnpm --filter backend build --clean && pnpm --filter frontend build && pnpm --filter contracts clean",
+    "setup": "pnpm install && pnpm --filter backend db:setup && pnpm --filter contracts build",
+    "setup:fresh": "pnpm clean && pnpm install && pnpm --filter backend db:reset && pnpm build",
+    "deploy:contracts": "pnpm --filter contracts deploy:sepolia",
+    "deploy:backend": "pnpm --filter backend deploy:railway",
+    "deploy:frontend": "pnpm --filter frontend deploy",
+    "deploy:all": "pnpm deploy:contracts && pnpm deploy:backend && pnpm deploy:frontend",
+    "health": "pnpm --filter backend health",
+    "docs": "pnpm --filter backend start:dev",
+    "validate": "pnpm lint && pnpm test && pnpm build"
   },
   "devDependencies": {
-    "prettier": "^3.6.2",
-    "turbo": "^2.5.5",
-    "typescript": "5.8.3"
+    "concurrently": "^8.2.2",
+    "prettier": "^3.1.0",
+    "turbo": "^1.11.0",
+    "typescript": "^5.1.3"
   },
-  "packageManager": "pnpm@9.0.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tracceaqua/tracceaqua-monorepo.git"
+  },
+  "keywords": [
+    "blockchain",
+    "traceability",
+    "seafood",
+    "aquaculture",
+    "supply-chain",
+    "sustainability",
+    "nigeria"
+  ],
+  "dependencies": {
+    "tracceaqua-monorepo": "link:"
   }
 }

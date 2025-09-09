@@ -1,79 +1,118 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { LocationDataDto, SpeciesDataDto, SamplingDataDto, LabTestDto } from './create-conservation-record.dto';
 
 export enum RecordStatus {
   DRAFT = 'DRAFT',
   SUBMITTED = 'SUBMITTED',
-  UNDER_REVIEW = 'UNDER_REVIEW',
   VERIFIED = 'VERIFIED',
-  PUBLISHED = 'PUBLISHED',
   REJECTED = 'REJECTED'
 }
 
 export class ConservationRecordResponseDto {
-  @ApiProperty({ description: 'Unique record ID' })
+  @ApiProperty({
+    description: 'Unique record ID',
+    example: 'clx1a2b3c4d5e6f7g8h9i0j1'
+  })
   id: string;
 
-  @ApiProperty({ description: 'Unique sampling ID' })
+  @ApiProperty({
+    description: 'Unique sampling identifier',
+    example: 'SAMPLE-2024-001'
+  })
   samplingId: string;
 
-  @ApiProperty({ description: 'User ID of the researcher who created this record' })
-  userId: string;
+  @ApiProperty({
+    description: 'Location and environmental data'
+  })
+  locationData: any;
 
-  @ApiProperty({ description: 'Location and environmental data' })
-  locationData: LocationDataDto;
+  @ApiProperty({
+    description: 'Species identification and count data'
+  })
+  speciesData: any;
 
-  @ApiProperty({ description: 'Species identification data' })
-  speciesData: SpeciesDataDto;
+  @ApiProperty({
+    description: 'Sampling methods and procedures'
+  })
+  samplingData: any;
 
-  @ApiProperty({ description: 'Sampling methodology data' })
-  samplingData: SamplingDataDto;
+  @ApiPropertyOptional({
+    description: 'Laboratory test results'
+  })
+  labTests?: any;
 
-  @ApiPropertyOptional({ description: 'Array of lab test results', type: [LabTestDto] })
-  labTests?: LabTestDto[];
-
-  @ApiPropertyOptional({ description: 'Array of uploaded file IPFS hashes' })
+  @ApiPropertyOptional({
+    description: 'IPFS hashes of uploaded files'
+  })
   fileHashes?: string[];
 
-  @ApiPropertyOptional({ description: 'Additional researcher notes' })
+  @ApiPropertyOptional({
+    description: 'Additional notes from the researcher'
+  })
   researcherNotes?: string;
 
-  @ApiPropertyOptional({ description: 'Weather conditions during sampling' })
+  @ApiPropertyOptional({
+    description: 'Weather conditions during sampling'
+  })
   weatherConditions?: string;
 
-  @ApiPropertyOptional({ description: 'Tidal conditions during sampling' })
+  @ApiPropertyOptional({
+    description: 'Tidal conditions during sampling'
+  })
   tidalConditions?: string;
 
-  @ApiProperty({ description: 'Current status of the record', enum: RecordStatus })
+  @ApiProperty({
+    description: 'Record status',
+    enum: RecordStatus,
+    example: RecordStatus.SUBMITTED
+  })
   status: RecordStatus;
 
-  @ApiPropertyOptional({ description: 'IPFS hash of the complete data for blockchain storage' })
+  @ApiPropertyOptional({
+    description: 'IPFS hash of complete record data'
+  })
   dataHash?: string;
 
-  @ApiPropertyOptional({ description: 'Blockchain transaction hash if recorded' })
+  @ApiPropertyOptional({
+    description: 'Blockchain transaction hash'
+  })
   blockchainHash?: string;
 
-  @ApiProperty({ description: 'Record creation timestamp' })
-  createdAt: Date;
-
-  @ApiProperty({ description: 'Record last update timestamp' })
-  updatedAt: Date;
-
-  @ApiPropertyOptional({ description: 'Verification timestamp' })
+  @ApiPropertyOptional({
+    description: 'Verification timestamp'
+  })
   verifiedAt?: Date;
 
-  @ApiPropertyOptional({ description: 'Admin who verified this record' })
+  @ApiPropertyOptional({
+    description: 'ID of admin who verified the record'
+  })
   verifiedBy?: string;
 
-  @ApiPropertyOptional({ description: 'Verification notes from admin' })
+  @ApiPropertyOptional({
+    description: 'Verification notes from admin'
+  })
   verificationNotes?: string;
 
-  // Computed fields
-  @ApiProperty({ description: 'Researcher profile information' })
-  researcher: {
+  @ApiProperty({
+    description: 'Record creation timestamp'
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    description: 'Record last update timestamp'
+  })
+  updatedAt: Date;
+
+  @ApiProperty({
+    description: 'User who created the record'
+  })
+  user: {
     id: string;
-    firstName?: string;
-    lastName?: string;
-    organization?: string;
+      address: string;
+      role: string;
+      profile?: {
+      firstName?: string;
+      lastName?: string;
+      organization?: string;
+    } | null;
   };
 }

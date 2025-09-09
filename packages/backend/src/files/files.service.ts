@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PinataSDK } from 'pinata';
-import { FileUploadResponseDto, BatchFileUploadDto } from './dto/upload-file.dto';
+import { FileUploadResponseDto, BatchFileUploadDto } from './dto/file-upload.dto';
 
 @Injectable()
 export class FilesService {
@@ -98,7 +98,7 @@ export class FilesService {
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            const category = batchData?.categories?.[i] || this.detectCategory(file);
+            const category = batchData?.category || this.detectCategory(file);
 
             try {
                 const result = await this.uploadFile(file, batchData?.recordId, category);
@@ -117,7 +117,7 @@ export class FilesService {
                     category: 'error',
                 });
             }
-    }
+        }
 
         return results;
     }

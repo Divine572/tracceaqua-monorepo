@@ -1,7 +1,3 @@
-
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -92,7 +88,7 @@ model RoleApplication {
 model AdminAction {
   id          String   @id @default(cuid())
   adminId     String   // Who performed the action
-  targetId    String   // Who/what was affected
+  targetId    String?  // Who/what was affected (nullable)
   action      String   // Action type (APPROVE_ROLE, REJECT_APPLICATION, etc.)
   description String?  // Detailed description
   metadata    Json?    // Additional action metadata
@@ -100,7 +96,7 @@ model AdminAction {
 
   // Relations
   admin  User @relation("AdminUser", fields: [adminId], references: [id])
-  target User @relation("TargetUser", fields: [targetId], references: [id])
+  target User? @relation("TargetUser", fields: [targetId], references: [id])
 
   @@map("admin_actions")
 }
@@ -169,160 +165,127 @@ model SupplyChainRecord {
   hatcheryData         Json?    // For farmed products
   growOutData          Json?    // For farmed products
   harvestData          Json?    // For both farmed and wild
-  fishingData          Json?    // For wild capture
-  processingData       Json?    // Processing stage
-  distributionData     Json?    // Distribution/logistics
-  retailData           Json?    // Retail stage
+  fishingData          Json?    // For wild-capture products
+  processingData       Json?    // Processing stage data
+  distributionData     Json?    // Distribution stage data
+  retailData           Json?    // Retail stage data
   
   // Current Status
-  currentStage         String   // Current stage in the supply chain
-  qrCodeData           String?  // QR code content
+  currentStage         String   // Current stage in supply chain
+  productStatus        String   @default("ACTIVE") // ACTIVE, RECALLED, EXPIRED, SOLD
+  
+  // Quality and Certifications
+  certifications       String[] // Array of certification names
+  qualityMetrics       Json?    // Quality scores and metrics
   
   // File Management
   fileHashes           String[] // IPFS hashes of uploaded files
   
+  // Sustainability and Public Access
+  sustainabilityScore  Float?   // 0-100 sustainability score
+  isPublic             Boolean  @default(false) // Whether publicly traceable
+  tags                 String[] // Product tags for categorization
+  
   // Blockchain Integration
   dataHash             String?  // IPFS hash of complete data
   blockchainHash       String?  // Blockchain transaction hash
-  
-  // Status and Tracking
-  status               String   @default("ACTIVE")
-  isPublic             Boolean  @default(true)  // Can consumers trace this product?
-  
-  // Quality and Certifications
-  qualityGrade         String?
-  certifications       String[] // Array of certification names/numbers
-  testResults          Json?    // Quality test results
   
   // Timestamps
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   
   // Relations
-  user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stageHistory SupplyChainStageHistory[]   
-  consumerFeedback ConsumerFeedback[]
-  traces           ProductTrace[]
+  user                 User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stageHistory         SupplyChainStageHistory[]
+  ConsumerFeedback     ConsumerFeedback[]
   
   // Indexes for better performance
   @@index([userId])
   @@index([productId])
-  @@index([batchId])
-  @@index([currentStage])
   @@index([sourceType])
+  @@index([currentStage])
   @@index([isPublic])
   @@index([createdAt])
   @@map("supply_chain_records")
 }
 
-
 model SupplyChainStageHistory {
-  id                   String   @id @default(cuid())
-  productId            String   // Reference to supply chain record
-  stage                String   // Stage name (HATCHERY, PROCESSING, etc.)
-  previousStage        String?  // Previous stage (for validation)
-  updatedBy            String   // User who made the update
-  updatedAt            DateTime @default(now())
-  notes                String?  // Optional notes about the transition
+  id          String   @id @default(cuid())
+  productId   String   // Reference to supply chain record
+  userId      String   // User who made this stage update
   
-  // Stage-specific data snapshot (what changed)
-  stageData            Json?    // Data specific to this stage
+  // Stage Information
+  stage       String   // Stage name (HATCHERY, PROCESSING, etc.)
+  location    String?  // Where this stage occurred
+  timestamp   DateTime @default(now())
   
-  // File attachments for this stage update
-  fileHashes           String[] // IPFS hashes of files uploaded for this stage
-  
-  // Location data (if applicable)
-  location             String?  // Where this stage update occurred
-  
-  // Quality metrics for this stage
-  qualityGrade         String?  // Quality grade at this stage
-  testResults          Json?    // Any test results for this stage
-  
-  // Blockchain tracking
-  blockchainHash       String?  // Transaction hash for this stage update
-  dataHash             String?  // Hash of the stage data
+  // Stage Data
+  notes       String?  // Notes about this stage
+  data        Json?    // Stage-specific data
+  fileHashes  String[] // IPFS hashes of files for this stage
   
   // Relations
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
   supplyChainRecord SupplyChainRecord @relation(fields: [productId], references: [productId], onDelete: Cascade)
-  user              User              @relation(fields: [updatedBy], references: [id])
   
-  // Indexes for better performance
   @@index([productId])
-  @@index([updatedAt])
-  @@index([stage])
-  @@index([updatedBy])
+  @@index([userId])
+  @@index([timestamp])
   @@map("supply_chain_stage_history")
 }
 
-
-
+// ===== CONSUMER FEEDBACK MODEL =====
 
 model ConsumerFeedback {
-  id          String   @id @default(cuid())
-  productId   String
-  rating      Int      @db.SmallInt // 1-5 rating
-  comment     String?  @db.Text
-  email       String?
-  wouldBuyAgain Boolean?
-  location    String?
-  ipAddress   String?
-  userAgent   String?
+  id                String   @id @default(cuid())
+  productId         String   // Reference to supply chain record
+  
+  // Feedback Content
+  rating            Int      // 1-5 star rating
+  comment           String?  // Optional written review
+  
+  // Consumer Information (optional)
+  consumerEmail     String?
+  consumerName      String?
+  
+  // Purchase Information
+  purchaseLocation  String?
+  purchaseDate      DateTime?
+  
+  // Moderation
+  verified          Boolean  @default(false)
+  status            String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  moderatedBy       String?  // Admin who moderated
+  moderatedAt       DateTime?
+  moderationNotes   String?
+  
+  // Additional Data
+  metadata          Json?    // Additional feedback metadata
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
   
   // Relations
-  product     SupplyChainRecord @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  supplyChainRecord SupplyChainRecord @relation(fields: [productId], references: [productId], onDelete: Cascade)
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  @@index([productId])
+  @@index([verified])
+  @@index([status])
+  @@index([createdAt])
   @@map("consumer_feedback")
 }
-
-model ProductTrace {
-  id        String   @id @default(cuid())
-  productId String
-  ipAddress String?
-  userAgent String?
-  location  String?
-  referer   String?
-  
-  // Relations  
-  product   SupplyChainRecord @relation(fields: [productId], references: [productId], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-  
-  @@map("product_traces")
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ===== ENUMS =====
 
 enum UserRole {
-  ADMIN
+  CONSUMER
   RESEARCHER
   FARMER
   FISHERMAN
   PROCESSOR
   TRADER
   RETAILER
-  CONSUMER
+  ADMIN
 }
 
 enum UserStatus {
@@ -330,6 +293,7 @@ enum UserStatus {
   PENDING
   SUSPENDED
   REJECTED
+  BANNED
 }
 
 enum ApplicationStatus {

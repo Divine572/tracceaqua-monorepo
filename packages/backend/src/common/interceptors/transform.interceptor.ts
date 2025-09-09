@@ -7,29 +7,39 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-export interface Response<T> {
+export interface ApiResponse<T> {
   success: boolean;
-  data: T;
+  statusCode: number;
   timestamp: string;
   path: string;
+  method: string;
+  data: T;
+  message?: string;
 }
 
 @Injectable()
 export class TransformInterceptor<T>
-  implements NestInterceptor<T, Response<T>> {
+  implements NestInterceptor<T, ApiResponse<T>> {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Observable<Response<T>> {
+  ): Observable<ApiResponse<T>> {
     const request = context.switchToHttp().getRequest();
+    const response = context.switchToHttp().getResponse();
 
     return next.handle().pipe(
       map((data) => ({
         success: true,
-        data,
+        statusCode: response.statusCode,
         timestamp: new Date().toISOString(),
         path: request.url,
+        method: request.method,
+        data,
+        message: response.statusCode === 201 ? 'Created successfully' :
+          response.statusCode === 204 ? 'Deleted successfully' :
+            'Request successful',
       })),
     );
   }
 }
+

@@ -1,55 +1,72 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ConservationRecordResponseDto, RecordStatus } from './dto/conservation-record-response.dto';
+import { FilesService } from '../files/files.service';
 import { CreateConservationRecordDto } from './dto/create-conservation-record.dto';
 import { UpdateConservationRecordDto } from './dto/update-conservation-record.dto';
-
-
-
+import { ConservationRecordResponseDto, RecordStatus } from './dto/conservation-record-response.dto';
 import { UserRole } from '../common/enums/user-role.enum';
-
-
-
-
 
 @Injectable()
 export class ConservationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private filesService: FilesService,
+  ) { }
 
   async create(userId: string, createDto: CreateConservationRecordDto): Promise<ConservationRecordResponseDto> {
-    // Verify user has researcher role
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { profile: true }
-    });
-
-    if (!user || user.role !== UserRole.RESEARCHER) {
-      throw new ForbiddenException('Only researchers can create conservation records');
-    }
-
-    // Check for duplicate sampling ID
-    const existingRecord = await this.prisma.conservationRecord.findFirst({
-      where: { samplingId: createDto.samplingId }
-    });
-
-    if (existingRecord) {
-      throw new BadRequestException('A record with this sampling ID already exists');
-    }
-
     try {
+      // Check if sampling ID already exists
+      const existingRecord = await this.prisma.conservationRecord.findUnique({
+        where: { samplingId: createDto.samplingId }
+      });
+
+      if (existingRecord) {
+        throw new BadRequestException('Sampling ID already exists');
+      }
+
+      // Validate required fields
+      if (!createDto.locationData || !createDto.speciesData || !createDto.samplingData) {
+        throw new BadRequestException('Location data, species data, and sampling data are required');
+      }
+
+      // Upload data to IPFS if needed
+      let dataHash: string | null = null;
+      if (createDto.uploadToIPFS) {
+        const ipfsData = {
+          samplingId: createDto.samplingId,
+          locationData: createDto.locationData,
+          speciesData: createDto.speciesData,
+          samplingData: createDto.samplingData,
+          labTests: createDto.labTests,
+          researcherNotes: createDto.researcherNotes,
+          weatherConditions: createDto.weatherConditions,
+          tidalConditions: createDto.tidalConditions,
+          timestamp: new Date().toISOString()
+        };
+
+        const uploadResult = await this.filesService.uploadJson(
+          ipfsData,
+          `conservation-${createDto.samplingId}.json`,
+          createDto.samplingId
+        );
+        dataHash = uploadResult.hash;
+      }
+
+      // Create the conservation record
       const record = await this.prisma.conservationRecord.create({
         data: {
-          userId,
           samplingId: createDto.samplingId,
-          locationData: createDto.locationData as any,
-          speciesData: createDto.speciesData as any,
-          samplingData: createDto.samplingData as any,
-          labTests: createDto.labTests as any,
+          userId,
+          locationData: createDto.locationData,
+          speciesData: createDto.speciesData,
+          samplingData: createDto.samplingData,
+          labTests: createDto.labTests || null,
           fileHashes: createDto.fileHashes || [],
           researcherNotes: createDto.researcherNotes,
           weatherConditions: createDto.weatherConditions,
           tidalConditions: createDto.tidalConditions,
-          status: RecordStatus.DRAFT,
+          status: 'DRAFT',
+          dataHash,
         },
         include: {
           user: {
@@ -58,25 +75,28 @@ export class ConservationService {
         }
       });
 
-      return this.formatRecordResponse(record);
+      return this.mapToResponseDto(record);
     } catch (error) {
-      throw new BadRequestException('Failed to create conservation record: ' + error.message);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create conservation record');
     }
   }
 
   async findAll(userId?: string, status?: RecordStatus): Promise<ConservationRecordResponseDto[]> {
-    const whereClause: any = {};
+    const where: any = {};
     
     if (userId) {
-      whereClause.userId = userId;
+      where.userId = userId;
     }
     
     if (status) {
-      whereClause.status = status;
+      where.status = status;
     }
 
     const records = await this.prisma.conservationRecord.findMany({
-      where: whereClause,
+      where,
       include: {
         user: {
           include: { profile: true }
@@ -85,25 +105,12 @@ export class ConservationService {
       orderBy: { createdAt: 'desc' }
     });
 
-    return records.map(record => this.formatRecordResponse(record));
+    return records.map(record => this.mapToResponseDto(record));
   }
 
-  async findOne(id: string, userId?: string): Promise<ConservationRecordResponseDto> {
-    const whereClause: any = { id };
-    
-    // Non-admin users can only see their own records or published records
-    if (userId) {
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      if (user?.role !== UserRole.ADMIN) {
-        whereClause.OR = [
-          { userId },
-          { status: RecordStatus.PUBLISHED }
-        ];
-      }
-    }
-
-    const record = await this.prisma.conservationRecord.findFirst({
-      where: whereClause,
+  async findOne(id: string, userId: string): Promise<ConservationRecordResponseDto> {
+    const record = await this.prisma.conservationRecord.findUnique({
+      where: { id },
       include: {
         user: {
           include: { profile: true }
@@ -115,68 +122,101 @@ export class ConservationService {
       throw new NotFoundException('Conservation record not found');
     }
 
-    return this.formatRecordResponse(record);
+    // Check if user can access this record
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (record.userId !== userId && user?.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Insufficient permissions to access this record');
+    }
+
+    return this.mapToResponseDto(record);
   }
 
   async update(id: string, userId: string, updateDto: UpdateConservationRecordDto): Promise<ConservationRecordResponseDto> {
     const record = await this.prisma.conservationRecord.findUnique({
-      where: { id },
-      include: { user: true }
+      where: { id }
     });
 
     if (!record) {
       throw new NotFoundException('Conservation record not found');
     }
 
-    // Only the creator or admin can update
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    // Check permissions
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
     if (record.userId !== userId && user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('You can only update your own records');
+      throw new ForbiddenException('Insufficient permissions to update this record');
     }
 
-    // Cannot update verified/published records unless admin
-    if ([RecordStatus.VERIFIED, RecordStatus.PUBLISHED].includes(record.status as RecordStatus) && user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Cannot update verified or published records');
+    // Prevent updates to verified records unless admin
+    if (record.status === 'VERIFIED' && user?.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Cannot update verified records');
     }
 
-    try {
-      const updatedRecord = await this.prisma.conservationRecord.update({
-        where: { id },
-        data: {
-          ...updateDto,
-          locationData: updateDto.locationData as any,
-          speciesData: updateDto.speciesData as any,
-          samplingData: updateDto.samplingData as any,
-          labTests: updateDto.labTests as any,
-        },
-        include: {
-          user: {
-            include: { profile: true }
-          }
+    // Update IPFS data if requested
+    let newDataHash = record.dataHash;
+    if (updateDto.updateIPFS && record.dataHash) {
+      const ipfsData = {
+        samplingId: record.samplingId,
+        locationData: updateDto.locationData || record.locationData,
+        speciesData: updateDto.speciesData || record.speciesData,
+        samplingData: updateDto.samplingData || record.samplingData,
+        labTests: updateDto.labTests || record.labTests,
+        researcherNotes: updateDto.researcherNotes || record.researcherNotes,
+        weatherConditions: updateDto.weatherConditions || record.weatherConditions,
+        tidalConditions: updateDto.tidalConditions || record.tidalConditions,
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Delete old data and upload new
+      if (record.dataHash) {
+        await this.filesService.deleteFile(record.dataHash);
+      }
+
+      const uploadResult = await this.filesService.uploadJson(
+        ipfsData,
+        `conservation-${record.samplingId}-updated.json`,
+        record.samplingId
+      );
+      newDataHash = uploadResult.hash;
+    }
+
+    const updatedRecord = await this.prisma.conservationRecord.update({
+      where: { id },
+      data: {
+        ...updateDto,
+        dataHash: newDataHash,
+        updatedAt: new Date(),
+      },
+      include: {
+        user: {
+          include: { profile: true }
         }
-      });
+      }
+    });
 
-      return this.formatRecordResponse(updatedRecord);
-    } catch (error) {
-      throw new BadRequestException('Failed to update conservation record: ' + error.message);
-    }
+    return this.mapToResponseDto(updatedRecord);
   }
 
   async updateStatus(id: string, adminId: string, status: RecordStatus, verificationNotes?: string): Promise<ConservationRecordResponseDto> {
-    // Verify admin role
-    const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
-    if (!admin || admin.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only administrators can update record status');
-    }
+    const record = await this.prisma.conservationRecord.findUnique({
+      where: { id }
+    });
 
-    const record = await this.prisma.conservationRecord.findUnique({ where: { id } });
     if (!record) {
       throw new NotFoundException('Conservation record not found');
     }
 
-    const updateData: any = { status };
-    
-    if (status === RecordStatus.VERIFIED) {
+    const updateData: any = {
+      status,
+      updatedAt: new Date(),
+    };
+
+    if (status === 'VERIFIED') {
       updateData.verifiedAt = new Date();
       updateData.verifiedBy = adminId;
       updateData.verificationNotes = verificationNotes;
@@ -192,72 +232,160 @@ export class ConservationService {
       }
     });
 
-    return this.formatRecordResponse(updatedRecord);
+    return this.mapToResponseDto(updatedRecord);
   }
 
   async delete(id: string, userId: string): Promise<void> {
     const record = await this.prisma.conservationRecord.findUnique({
-      where: { id },
-      include: { user: true }
+      where: { id }
     });
 
     if (!record) {
       throw new NotFoundException('Conservation record not found');
     }
 
-    // Only the creator or admin can delete
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    // Check permissions
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
     if (record.userId !== userId && user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('You can only delete your own records');
+      throw new ForbiddenException('Insufficient permissions to delete this record');
     }
 
-    // Cannot delete verified/published records unless admin
-    if ([RecordStatus.VERIFIED, RecordStatus.PUBLISHED].includes(record.status as RecordStatus) && user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Cannot delete verified or published records');
+    // Delete associated files from IPFS
+    if (record.fileHashes && record.fileHashes.length > 0) {
+      for (const hash of record.fileHashes as string[]) {
+        try {
+          await this.filesService.deleteFile(hash);
+        } catch (error) {
+          console.warn(`Failed to delete file ${hash}:`, error.message);
+        }
+      }
     }
 
-    await this.prisma.conservationRecord.delete({ where: { id } });
+    // Delete main data file from IPFS
+    if (record.dataHash) {
+      try {
+        await this.filesService.deleteFile(record.dataHash);
+      } catch (error) {
+        console.warn(`Failed to delete data file ${record.dataHash}:`, error.message);
+      }
+    }
+
+    await this.prisma.conservationRecord.delete({
+      where: { id }
+    });
   }
 
   async getStatistics(userId?: string): Promise<any> {
-    const whereClause = userId ? { userId } : {};
+    const where: any = {};
+    if (userId) {
+      where.userId = userId;
+    }
 
-    const [total, byStatus, recentRecords] = await Promise.all([
-      this.prisma.conservationRecord.count({ where: whereClause }),
+    const [total, byStatus, recent, bySpecies] = await Promise.all([
+      this.prisma.conservationRecord.count({ where }),
       this.prisma.conservationRecord.groupBy({
         by: ['status'],
-        where: whereClause,
+        where,
         _count: { status: true }
       }),
       this.prisma.conservationRecord.findMany({
-        where: whereClause,
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          samplingId: true,
-          status: true,
-          createdAt: true,
-          speciesData: true,
-        }
+        where: {
+          ...where,
+          createdAt: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+          }
+        },
+        select: { createdAt: true }
+      }),
+      this.prisma.conservationRecord.findMany({
+        where,
+        select: { speciesData: true }
       })
     ]);
 
+    const statusCounts = byStatus.reduce((acc, item) => {
+      acc[item.status] = item._count.status;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Extract species information from speciesData JSON
+    const speciesCounts = bySpecies.reduce((acc, record) => {
+      const speciesData = record.speciesData as any;
+      const species = speciesData?.primarySpecies || speciesData?.species || 'Unknown';
+      acc[species] = (acc[species] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
     return {
-      totalRecords: total,
-      statusBreakdown: byStatus.reduce((acc, item) => {
-        acc[item.status] = item._count.status;
-        return acc;
-      }, {} as Record<string, number>),
-      recentRecords
+      total,
+      statusCounts,
+      speciesCounts,
+      recentCount: recent.length,
+      averagePerMonth: Math.round(total / 12), // Rough estimate
+      lastUpdated: new Date().toISOString()
     };
   }
 
-  private formatRecordResponse(record: any): ConservationRecordResponseDto {
+  async searchRecords(query: string, userId?: string): Promise<ConservationRecordResponseDto[]> {
+    const where: any = {
+      OR: [
+        { samplingId: { contains: query, mode: 'insensitive' } },
+        { researcherNotes: { contains: query, mode: 'insensitive' } },
+        { weatherConditions: { contains: query, mode: 'insensitive' } },
+      ]
+    };
+
+    if (userId) {
+      where.userId = userId;
+    }
+
+    const records = await this.prisma.conservationRecord.findMany({
+      where,
+      include: {
+        user: {
+          include: { profile: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50 // Limit search results
+    });
+
+    return records.map(record => this.mapToResponseDto(record));
+  }
+
+  async getRecordsBySamplingId(samplingId: string, userId: string): Promise<ConservationRecordResponseDto | null> {
+    const record = await this.prisma.conservationRecord.findUnique({
+      where: { samplingId },
+      include: {
+        user: {
+          include: { profile: true }
+        }
+      }
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    // Check permissions
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (record.userId !== userId && user?.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Insufficient permissions to access this record');
+    }
+
+    return this.mapToResponseDto(record);
+  }
+
+  private mapToResponseDto(record: any): ConservationRecordResponseDto {
     return {
       id: record.id,
       samplingId: record.samplingId,
-      userId: record.userId,
       locationData: record.locationData,
       speciesData: record.speciesData,
       samplingData: record.samplingData,
@@ -269,16 +397,20 @@ export class ConservationService {
       status: record.status as RecordStatus,
       dataHash: record.dataHash,
       blockchainHash: record.blockchainHash,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
       verifiedAt: record.verifiedAt,
       verifiedBy: record.verifiedBy,
       verificationNotes: record.verificationNotes,
-      researcher: {
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      user: {
         id: record.user.id,
-        firstName: record.user.profile?.firstName,
-        lastName: record.user.profile?.lastName,
-        organization: record.user.profile?.organization,
+        address: record.user.address,
+        role: record.user.role,
+        profile: record.user.profile ? {
+          firstName: record.user.profile.firstName,
+          lastName: record.user.profile.lastName,
+          organization: record.user.profile.organization,
+        } : null
       }
     };
   }

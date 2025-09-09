@@ -1,41 +1,44 @@
 import { run } from "hardhat";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 async function main() {
-    const contractAddress = process.env.CONTRACT_ADDRESS;
-    
-    if (!contractAddress) {
-        throw new Error("Please set CONTRACT_ADDRESS environment variable");
-    }
-
-    console.log("🔍 Verifying contract on Etherscan...");
-    console.log("📍 Contract address:", contractAddress);
+    console.log("🔍 Starting contract verification on Etherscan...");
 
     try {
+        // Read deployment info
+        const deploymentPath = join(__dirname, "../deployments/sepolia.json");
+        const deploymentInfo = JSON.parse(readFileSync(deploymentPath, 'utf8'));
+
+        console.log("📋 Contract address:", deploymentInfo.address);
+        console.log("📋 Network:", deploymentInfo.network);
+
+        // Verify the contract
+        console.log("⏳ Verifying contract...");
+
         await run("verify:verify", {
-            address: contractAddress,
-            constructorArguments: [], // TracceAqua constructor has no arguments
+            address: deploymentInfo.address,
+            constructorArguments: deploymentInfo.constructorArgs || [],
+            network: deploymentInfo.network
         });
 
         console.log("✅ Contract verified successfully!");
+        console.log(`🔗 View on Etherscan: https://sepolia.etherscan.io/address/${deploymentInfo.address}#code`);
 
-    } catch (error: any) {
-        if (error.message.toLowerCase().includes("already verified")) {
-            console.log("ℹ️ Contract is already verified!");
+    } catch (error) {
+        if (typeof error === "object" && error !== null && "message" in error && typeof (error as any).message === "string" && (error as any).message.includes("Already Verified")) {
+            console.log("✅ Contract is already verified!");
         } else {
-            console.error("❌ Verification failed:");
-            console.error(error);
+            console.error("❌ Verification failed:", error);
             throw error;
         }
     }
 }
 
 main()
-    .then(() => {
-        console.log("🎉 Verification completed!");
-        process.exit(0);
-    })
+    .then(() => process.exit(0))
     .catch((error) => {
-        console.error(error);
+        console.error("❌ Verification failed:", error);
         process.exit(1);
     });
 

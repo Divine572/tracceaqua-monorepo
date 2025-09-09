@@ -1,8 +1,8 @@
 import { registerAs } from '@nestjs/config';
 
-export const uploadConfig = registerAs('upload', () => ({
+export const fileConfig = registerAs('file', () => ({
 
-  upload: {
+  file: {
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE ?? `${10 * 1024 * 1024}`, 10),
     allowedMimeTypes: [
       'image/jpeg',
