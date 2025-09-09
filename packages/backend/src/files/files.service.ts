@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PinataSDK } from 'pinata';
-import { FileUploadResponseDto, BatchFileUploadDto } from './dto/file-upload.dto';
+import { FileUploadResponseDto, BatchFileUploadDto } from './dto/files.dto';
 
 @Injectable()
 export class FilesService {

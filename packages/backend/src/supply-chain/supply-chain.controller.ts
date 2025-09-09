@@ -32,15 +32,25 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 
 import { SupplyChainService } from './supply-chain.service';
-import { ConsumerFeedbackService } from './consumer-feedback.service';
+// import { ConsumerFeedbackService } from './consumer-feedback.service';
 import { QRCodeService } from './qr-code.service';
-import { PublicStatisticsService } from './public-statistics.service';
+// import { PublicStatisticsService } from './public-statistics.service';
 
 import {
+    SupplyChainStage,
     CreateSupplyChainRecordDto,
-    UpdateSupplyChainStageDto,
     SupplyChainRecordResponseDto,
-} from './dto';
+    UpdateSupplyChainStageDto,
+    GetSupplyChainRecordsDto,
+    PaginatedSupplyChainResponseDto,
+    SourceType,
+    GenerateQRCodeDto,
+    QRCodeResponseDto,
+    ConsumerFeedbackDto,
+} from './dto/supply-chain.dto';
+
+
+
 
 @ApiTags('Supply Chain')
 @Controller('supply-chain')
@@ -49,9 +59,7 @@ import {
 export class SupplyChainController {
     constructor(
         private readonly supplyChainService: SupplyChainService,
-        private readonly consumerFeedbackService: ConsumerFeedbackService,
         private readonly qrCodeService: QRCodeService,
-        private readonly publicStatisticsService: PublicStatisticsService,
     ) { }
 
     // ===== SUPPLY CHAIN RECORDS =====
@@ -75,7 +83,7 @@ export class SupplyChainController {
         @Body() createDto: CreateSupplyChainRecordDto,
         @UploadedFiles() files?: Express.Multer.File[],
     ): Promise<SupplyChainRecordResponseDto> {
-        return this.supplyChainService.create(req.user.id, createDto);
+        return this.supplyChainService.createSupplyChainRecord(req.user.id, createDto, files);
     }
 
     @Get(':productId')
@@ -93,7 +101,7 @@ export class SupplyChainController {
         @Request() req,
         @Param('productId') productId: string,
     ): Promise<SupplyChainRecordResponseDto> {
-        return this.supplyChainService.findOne(productId, req.user.id);
+        return this.supplyChainService.getSupplyChainRecordByProductId(productId, req.user.id);
     }
 
     @Put(':productId/stage')
@@ -117,7 +125,7 @@ export class SupplyChainController {
         @Body() updateDto: UpdateSupplyChainStageDto,
         @UploadedFiles() files?: Express.Multer.File[],
     ): Promise<SupplyChainRecordResponseDto> {
-        return this.supplyChainService.updateStage(productId, req.user.id, updateDto);
+        return this.supplyChainService.updateSupplyChainStage(productId, req.user.id, updateDto, files);
     }
 
     // ===== PUBLIC TRACEABILITY =====
@@ -135,7 +143,7 @@ export class SupplyChainController {
     async traceProduct(
         @Param('productId') productId: string,
     ) {
-        return this.supplyChainService.getTraceability(productId);
+        return this.supplyChainService.traceProduct(productId);
     }
 
     @Get('public/qr/:productId')
@@ -150,8 +158,9 @@ export class SupplyChainController {
     })
     async generateQRCode(
         @Param('productId') productId: string,
-    ): Promise<{ productId: string; traceUrl: string; qrCodeDataURL: string; qrCodeSVG: string; generatedAt: string }> {
-        return this.qrCodeService.generateQRCode(productId);
+        @Body() qrDto: GenerateQRCodeDto
+    ): Promise<QRCodeResponseDto> {
+        return this.qrCodeService.generateQRCode(productId, qrDto);
     }
 
     // ===== CONSUMER FEEDBACK =====
@@ -169,12 +178,12 @@ export class SupplyChainController {
     @HttpCode(HttpStatus.CREATED)
     async submitFeedback(
         @Param('productId') productId: string,
-        @Body() feedbackDto: any, // Use actual ConsumerFeedbackDto when available
+        @Body() feedbackDto: ConsumerFeedbackDto, // Use actual ConsumerFeedbackDto when available
     ): Promise<{ message: string; feedbackId: string }> {
-        const feedback = await this.consumerFeedbackService.create({
+        const feedback = await this.supplyChainService.addConsumerFeedback(
             productId,
-            ...feedbackDto,
-        });
+            feedbackDto,
+        );
         return {
             message: 'Feedback submitted successfully',
             feedbackId: feedback.id,
@@ -195,7 +204,7 @@ export class SupplyChainController {
         @Query('page', new ParseIntPipe({ optional: true })) page = 1,
         @Query('limit', new ParseIntPipe({ optional: true })) limit = 10,
     ) {
-        return this.consumerFeedbackService.findByProduct(
+        return this.supplyChainService.getProductFeedback(
             productId,
             true,
             limit,
@@ -214,6 +223,6 @@ export class SupplyChainController {
         description: 'Public statistics retrieved successfully',
     })
     async getPublicStatistics() {
-        return this.publicStatisticsService.getPublicStatistics();
+        return this.supplyChainService.getPublicStatistics();
     }
 }

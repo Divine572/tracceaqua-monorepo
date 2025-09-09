@@ -1,31 +1,29 @@
 import {
-    Controller,
-    Get,
-    Post,
-    Put,
-    Delete,
-    Param,
-    Body,
-    Query,
-    Request,
-    UseGuards,
-    UseInterceptors,
-    UploadedFiles,
-    ParseIntPipe,
-    ValidationPipe,
-    HttpStatus,
-    HttpCode,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+  Request,
+  UseGuards,
+  UseInterceptors,
+  UploadedFiles,
+  ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
-    ApiTags,
-    ApiOperation,
-    ApiResponse,
-    ApiBearerAuth,
-    ApiConsumes,
-    ApiParam,
-    ApiQuery,
-    ApiBody,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -34,192 +32,205 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 
 import { ConservationService } from './conservation.service';
-
 import {
-    CreateConservationRecordDto,
-    UpdateConservationRecordDto,
-    ConservationRecordResponseDto,
-    RecordStatus,
-} from './dto';
+  CreateConservationRecordDto,
+  UpdateConservationRecordDto,
+  VerifyConservationRecordDto,
+  ConservationRecordResponseDto,
+  GetConservationRecordsDto,
+  PaginatedConservationResponseDto,
+} from './dto/conservation.dto';
 
 @ApiTags('Conservation')
 @Controller('conservation')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ConservationController {
-    constructor(private readonly conservationService: ConservationService) { }
+  constructor(private readonly conservationService: ConservationService) {}
 
-    // ===== CONSERVATION RECORDS =====
+  // ===== CREATE CONSERVATION RECORD =====
 
-    @Post()
-    @ApiOperation({
-        summary: 'Create conservation record',
-        description: 'Create a new conservation/research record with file uploads',
-    })
-    @ApiConsumes('multipart/form-data')
-    @ApiResponse({
-        status: HttpStatus.CREATED,
-        description: 'Conservation record created successfully',
-        type: ConservationRecordResponseDto,
-    })
-    @UseInterceptors(FilesInterceptor('files', 10))
-    @Roles(UserRole.RESEARCHER)
-    @UseGuards(RoleGuard)
-    async createRecord(
-        @Request() req,
-        @Body() createDto: CreateConservationRecordDto,
-        @UploadedFiles() files?: Express.Multer.File[],
-    ): Promise<ConservationRecordResponseDto> {
-        return this.conservationService.create(req.user.id, createDto);
-    }
+  @Post()
+  @UseGuards(RoleGuard)
+  @Roles(UserRole.RESEARCHER, UserRole.ADMIN)
+  @UseInterceptors(FilesInterceptor('files', 10))
+  @ApiOperation({
+    summary: 'Create conservation record',
+    description: 'Create a new conservation record with sampling data and optional file uploads',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Conservation record created successfully',
+    type: ConservationRecordResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Only researchers can create conservation records',
+  })
+  async createConservationRecord(
+    @Request() req,
+    @Body() createDto: CreateConservationRecordDto,
+    @UploadedFiles() files?: Express.Multer.File[]
+  ): Promise<ConservationRecordResponseDto> {
+    return this.conservationService.createConservationRecord(req.user.id, createDto, files);
+  }
 
-    @Get()
-    @ApiOperation({
-        summary: 'Get conservation records',
-        description: 'Retrieve conservation records with optional filtering',
-    })
-    @ApiQuery({ name: 'status', required: false, enum: RecordStatus })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        description: 'Conservation records retrieved successfully',
-        type: [ConservationRecordResponseDto],
-    })
-    async getRecords(
-        @Request() req,
-        @Query('status') status?: RecordStatus,
-    ): Promise<ConservationRecordResponseDto[]> {
-        return this.conservationService.findAll(req.user.id, status);
-    }
+  // ===== GET CONSERVATION RECORDS =====
 
-    @Get(':id')
-    @ApiOperation({
-        summary: 'Get conservation record',
-        description: 'Retrieve a specific conservation record by ID',
-    })
-    @ApiParam({ name: 'id', description: 'Record ID' })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        description: 'Conservation record retrieved successfully',
-        type: ConservationRecordResponseDto,
-    })
-    async getRecord(
-        @Request() req,
-        @Param('id') id: string,
-    ): Promise<ConservationRecordResponseDto> {
-        return this.conservationService.findOne(id, req.user.id);
-    }
+  @Get()
+  @ApiOperation({
+    summary: 'Get conservation records',
+    description: 'Get paginated list of conservation records with filtering options',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'species', required: false, type: String })
+  @ApiQuery({ name: 'researcherId', required: false, type: String })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Conservation records retrieved successfully',
+    type: PaginatedConservationResponseDto,
+  })
+  async getConservationRecords(
+    @Request() req,
+    @Query() query: GetConservationRecordsDto
+  ): Promise<PaginatedConservationResponseDto> {
+    return this.conservationService.getConservationRecords(req.user.id, query);
+  }
 
-    @Put(':id')
-    @ApiOperation({
-        summary: 'Update conservation record',
-        description: 'Update an existing conservation record',
-    })
-    @ApiParam({ name: 'id', description: 'Record ID' })
-    @ApiConsumes('multipart/form-data')
-    @ApiResponse({
-        status: HttpStatus.OK,
-        description: 'Conservation record updated successfully',
-        type: ConservationRecordResponseDto,
-    })
-    @UseInterceptors(FilesInterceptor('files', 10))
-    @Roles(UserRole.RESEARCHER)
-    @UseGuards(RoleGuard)
-    async updateRecord(
-        @Request() req,
-        @Param('id') id: string,
-        @Body() updateDto: UpdateConservationRecordDto,
-        @UploadedFiles() files?: Express.Multer.File[],
-    ): Promise<ConservationRecordResponseDto> {
-        return this.conservationService.update(id, req.user.id, updateDto);
-    }
+  // ===== GET SINGLE RECORD =====
 
-    @Delete(':id')
-    @ApiOperation({
-        summary: 'Delete conservation record',
-        description: 'Delete a conservation record (only if not verified)',
-    })
-    @ApiParam({ name: 'id', description: 'Record ID' })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        description: 'Conservation record deleted successfully',
-    })
-    @Roles(UserRole.RESEARCHER, UserRole.ADMIN)
-    @UseGuards(RoleGuard)
-    @HttpCode(HttpStatus.OK)
-    async deleteRecord(
-        @Request() req,
-        @Param('id') id: string,
-    ): Promise<{ message: string }> {
-        await this.conservationService.delete(id, req.user.id);
-        return { message: 'Conservation record deleted successfully' };
-    }
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get conservation record by ID',
+    description: 'Get detailed information about a specific conservation record',
+  })
+  @ApiParam({ name: 'id', description: 'Conservation record ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Conservation record retrieved successfully',
+    type: ConservationRecordResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Conservation record not found',
+  })
+  async getConservationRecordById(
+    @Param('id', ParseUUIDPipe) recordId: string,
+    @Request() req
+  ): Promise<ConservationRecordResponseDto> {
+    return this.conservationService.getConservationRecordById(recordId, req.user.id);
+  }
 
-    // ===== RECORD VERIFICATION (ADMIN ONLY) =====
+  // ===== UPDATE RECORD =====
 
-    @Post(':id/verify')
-    @ApiOperation({
-        summary: 'Verify conservation record',
-        description: 'Verify a conservation record (admin only)',
-    })
-    @ApiParam({ name: 'id', description: 'Record ID' })
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                status: {
-                    type: 'string',
-                    enum: ['VERIFIED', 'REJECTED'],
-                    description: 'Verification status'
-                },
-                verificationNotes: {
-                    type: 'string',
-                    description: 'Optional verification notes'
-                },
-            },
-            required: ['status'],
-        },
-    })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        description: 'Record verification completed',
-        type: ConservationRecordResponseDto,
-    })
-    @Roles(UserRole.ADMIN)
-    @UseGuards(RoleGuard)
-    async verifyRecord(
-        @Request() req,
-        @Param('id') id: string,
-        @Body() verificationData: {
-            status: 'VERIFIED' | 'REJECTED';
-            verificationNotes?: string;
-        },
-    ): Promise<ConservationRecordResponseDto> {
-        return this.conservationService.updateStatus(
-            id,
-            req.user.id,
-            verificationData.status as RecordStatus,
-            verificationData.verificationNotes,
-        );
-    }
+  @Put(':id')
+  @UseInterceptors(FilesInterceptor('files', 10))
+  @ApiOperation({
+    summary: 'Update conservation record',
+    description: 'Update conservation record data and add additional files',
+  })
+  @ApiParam({ name: 'id', description: 'Conservation record ID' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Conservation record updated successfully',
+    type: ConservationRecordResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Access denied or record already verified',
+  })
+  async updateConservationRecord(
+    @Param('id', ParseUUIDPipe) recordId: string,
+    @Request() req,
+    @Body() updateDto: UpdateConservationRecordDto,
+    @UploadedFiles() files?: Express.Multer.File[]
+  ): Promise<ConservationRecordResponseDto> {
+    return this.conservationService.updateConservationRecord(recordId, req.user.id, updateDto, files);
+  }
 
-    // ===== STATISTICS =====
+  // ===== ADMIN VERIFICATION =====
 
-    @Get('statistics/overview')
-    @ApiOperation({
-        summary: 'Get conservation statistics',
-        description: 'Get overview statistics for conservation records',
-    })
-    @ApiQuery({ name: 'userId', required: false, type: String })
-    @ApiResponse({
-        status: HttpStatus.OK,
-        description: 'Conservation statistics retrieved successfully',
-    })
-    async getStatistics(
-        @Request() req,
-        @Query('userId') userId?: string,
-    ) {
-        // Only allow admins to view other users' stats
-        const targetUserId = req.user.role === UserRole.ADMIN ? userId : req.user.id;
-        return this.conservationService.getStatistics(targetUserId);
-    }
+  @Put(':id/verify')
+  @UseGuards(RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Verify conservation record (Admin)',
+    description: 'Approve or reject a conservation record (Admin only)',
+  })
+  @ApiParam({ name: 'id', description: 'Conservation record ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Conservation record verification updated successfully',
+    type: ConservationRecordResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Admin access required',
+  })
+  async verifyConservationRecord(
+    @Param('id', ParseUUIDPipe) recordId: string,
+    @Request() req,
+    @Body() verifyDto: VerifyConservationRecordDto
+  ): Promise<ConservationRecordResponseDto> {
+    return this.conservationService.verifyConservationRecord(recordId, req.user.id, verifyDto);
+  }
+
+  // ===== DELETE RECORD =====
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete conservation record',
+    description: 'Delete a conservation record (only drafts and unverified records)',
+  })
+  @ApiParam({ name: 'id', description: 'Conservation record ID' })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Conservation record deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Cannot delete verified records',
+  })
+  async deleteConservationRecord(
+    @Param('id', ParseUUIDPipe) recordId: string,
+    @Request() req
+  ): Promise<void> {
+    return this.conservationService.deleteConservationRecord(recordId, req.user.id);
+  }
+
+  // ===== ADMIN ENDPOINTS =====
+
+  @Get('admin/pending')
+  @UseGuards(RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Get pending conservation records (Admin)',
+    description: 'Get all conservation records pending verification (Admin only)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Pending records retrieved successfully',
+    type: PaginatedConservationResponseDto,
+  })
+  async getPendingRecords(@Request() req): Promise<PaginatedConservationResponseDto> {
+    return this.conservationService.getConservationRecords(req.user.id, { status: 'SUBMITTED' });
+  }
+
+  @Get('admin/stats')
+  @UseGuards(RoleGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Get conservation statistics (Admin)',
+    description: 'Get comprehensive conservation records statistics (Admin only)',
+  })
+  async getConservationStats() {
+    // Implementation would include various statistics
+    return { message: 'Conservation statistics endpoint' };
+  }
 }

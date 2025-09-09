@@ -38,7 +38,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 
 import { FilesService } from './files.service';
-import { FileUploadResponseDto, BatchFileUploadDto, BatchFileUploadResponseDto } from './dto/file-upload.dto';
+import { FileUploadResponseDto, BatchFileUploadDto, BatchFileUploadResponseDto } from './dto/files.dto';
 
 @ApiTags('Files')
 @Controller('files')

@@ -1,24 +1,96 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Logger
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { BlockchainService } from '../blockchain/blockchain.service';
 import { FilesService } from '../files/files.service';
-import { CreateSupplyChainRecordDto, SourceType, SupplyChainStage, ProductStatus } from './dto/create-supply-chain-record.dto';
-import { UpdateSupplyChainStageDto } from './dto/update-supply-chain-stage.dto';
-import { SupplyChainRecordResponseDto } from './dto/supply-chain-record-response.dto';
+import { QRCodeService } from './qr-code.service';
+import { createHash } from 'crypto';
 
 
-import { UserRole } from '../common/enums/user-role.enum';
+
+import {
+  SupplyChainStage,
+  CreateSupplyChainRecordDto,
+  SupplyChainRecordResponseDto,
+  UpdateSupplyChainStageDto,
+  GetSupplyChainRecordsDto,
+  PaginatedSupplyChainResponseDto,
+  SourceType,
+  GenerateQRCodeDto,
+  QRCodeResponseDto,
+  ConsumerFeedbackDto,
+} from './dto/supply-chain.dto';
+
+
 
 @Injectable()
 export class SupplyChainService {
+  private readonly logger = new Logger(SupplyChainService.name);
+
+  // Role-based stage permissions
+  private readonly stagePermissions = {
+    [SupplyChainStage.HATCHERY]: ['FARMER'],
+    [SupplyChainStage.GROW_OUT]: ['FARMER'],
+    [SupplyChainStage.FISHING]: ['FISHERMAN'],
+    [SupplyChainStage.HARVEST]: ['FARMER', 'FISHERMAN'],
+    [SupplyChainStage.PROCESSING]: ['PROCESSOR'],
+    [SupplyChainStage.COLD_STORAGE]: ['PROCESSOR', 'TRADER'],
+    [SupplyChainStage.TRANSPORT]: ['TRADER', 'RETAILER'],
+    [SupplyChainStage.RETAIL]: ['RETAILER'],
+    [SupplyChainStage.CONSUMER]: ['RETAILER']
+  };
+
+  // Valid stage transitions
+  private readonly stageTransitions = {
+    [SupplyChainStage.HATCHERY]: [SupplyChainStage.GROW_OUT],
+    [SupplyChainStage.GROW_OUT]: [SupplyChainStage.HARVEST],
+    [SupplyChainStage.FISHING]: [SupplyChainStage.PROCESSING, SupplyChainStage.HARVEST],
+    [SupplyChainStage.HARVEST]: [SupplyChainStage.PROCESSING, SupplyChainStage.COLD_STORAGE],
+    [SupplyChainStage.PROCESSING]: [SupplyChainStage.COLD_STORAGE, SupplyChainStage.TRANSPORT],
+    [SupplyChainStage.COLD_STORAGE]: [SupplyChainStage.TRANSPORT],
+    [SupplyChainStage.TRANSPORT]: [SupplyChainStage.RETAIL],
+    [SupplyChainStage.RETAIL]: [SupplyChainStage.CONSUMER]
+  };
+
   constructor(
-    private prisma: PrismaService,
-    private filesService: FilesService,
+    private readonly prismaService: PrismaService,
+    private readonly blockchainService: BlockchainService,
+    private readonly filesService: FilesService,
+    private readonly qrCodeService: QRCodeService,
   ) {}
 
-  async create(userId: string, createDto: CreateSupplyChainRecordDto): Promise<SupplyChainRecordResponseDto> {
+  // ===== CREATE SUPPLY CHAIN RECORD =====
+
+  async createSupplyChainRecord(
+    userId: string,
+    createDto: CreateSupplyChainRecordDto,
+    files?: Express.Multer.File[]
+  ): Promise<SupplyChainRecordResponseDto> {
     try {
-      // Check if product ID already exists
-      const existingRecord = await this.prisma.supplyChainRecord.findUnique({
+      this.logger.log(`Creating supply chain record: ${createDto.productId} by user: ${userId}`);
+
+      // 1. Validate user and determine initial stage
+      const user = await this.prismaService.user.findUnique({
+        where: { id: userId },
+        include: { profile: true }
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const initialStage = this.determineInitialStage(createDto.sourceType, user.role);
+      if (!this.canUserCreateStage(user.role, initialStage)) {
+        throw new ForbiddenException(`Role ${user.role} cannot create ${initialStage} stage`);
+      }
+
+      // 2. Check if product ID already exists
+      const existingRecord = await this.prismaService.supplyChainRecord.findUnique({
         where: { productId: createDto.productId }
       });
 
@@ -26,50 +98,16 @@ export class SupplyChainService {
         throw new BadRequestException('Product ID already exists');
       }
 
-      // Validate source type and initial stage compatibility
-      this.validateStageForSourceType(createDto.sourceType, createDto.currentStage);
-
-      // Check if user has permission for the initial stage
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
-      });
-
-      if (!user) {
-        throw new ForbiddenException('User not found');
+      // 3. Process uploaded files
+      let fileHashes: string[] = [];
+      if (files && files.length > 0) {
+        this.logger.log(`Uploading ${files.length} files to IPFS...`);
+        const uploadResults = await this.filesService.uploadFiles(files);
+        fileHashes = uploadResults.map(result => result.hash).filter(hash => hash);
       }
 
-      if (!this.canUserUpdateStage(user.role, createDto.currentStage)) {
-        throw new ForbiddenException('Insufficient permissions for this stage');
-      }
-
-      // Upload initial data to IPFS if requested
-      let dataHash: string | null = null;
-      if (createDto.uploadToIPFS) {
-        const ipfsData = {
-          productId: createDto.productId,
-          batchId: createDto.batchId,
-          sourceType: createDto.sourceType,
-          speciesName: createDto.speciesName,
-          productName: createDto.productName,
-          productDescription: createDto.productDescription,
-          currentStage: createDto.currentStage,
-          stageData: this.getStageData(createDto, createDto.currentStage),
-          certifications: createDto.certifications,
-          qualityMetrics: createDto.qualityMetrics,
-          sustainabilityScore: createDto.sustainabilityScore,
-          timestamp: new Date().toISOString()
-        };
-
-        const uploadResult = await this.filesService.uploadJson(
-          ipfsData,
-          `supply-chain-${createDto.productId}.json`,
-          createDto.productId
-        );
-        dataHash = uploadResult.hash;
-      }
-
-      // Create supply chain record
-      const record = await this.prisma.supplyChainRecord.create({
+      // 4. Create record in database
+      const record = await this.prismaService.supplyChainRecord.create({
         data: {
           productId: createDto.productId,
           userId,
@@ -78,527 +116,776 @@ export class SupplyChainService {
           speciesName: createDto.speciesName,
           productName: createDto.productName,
           productDescription: createDto.productDescription,
-          hatcheryData: createDto.hatcheryData,
-          growOutData: createDto.growOutData,
-          harvestData: createDto.harvestData,
-          fishingData: createDto.fishingData,
-          processingData: createDto.processingData,
-          distributionData: createDto.distributionData,
-          retailData: createDto.retailData,
-          currentStage: createDto.currentStage,
+          currentStage: initialStage,
           productStatus: 'ACTIVE',
-          certifications: createDto.certifications || [],
-          qualityMetrics: createDto.qualityMetrics,
-          fileHashes: createDto.fileHashes || [],
-          sustainabilityScore: createDto.sustainabilityScore,
-          isPublic: createDto.isPublic || false,
-          tags: createDto.tags || [],
-          dataHash,
+          isPublic: createDto.isPublic ?? true,
+          hatcheryData: createDto.hatcheryData as any,
+          growOutData: createDto.growOutData as any,
+          fishingData: createDto.fishingData as any,
+          harvestData: createDto.harvestData as any,
+          processingData: createDto.processingData as any,
+          distributionData: createDto.storageData as any, // Map storageData to distributionData
+          // Note: transportData doesn't exist in schema, using distributionData
+          fileHashes
         },
         include: {
-          user: {
-            include: { profile: true }
+          user: { include: { profile: true } },
+          stageHistory: {
+            include: { user: { include: { profile: true } } },
+            orderBy: { timestamp: 'asc' }
           }
         }
       });
 
-      // Create initial stage history entry
-      await this.prisma.supplyChainStageHistory.create({
+      // 5. Create initial stage history
+      await this.prismaService.supplyChainStageHistory.create({
         data: {
-          productId: createDto.productId,
+          productId: record.productId,
+          stage: initialStage,
           userId,
-          stage: createDto.currentStage,
-          location: createDto.location || '',
           timestamp: new Date(),
-          notes: 'Initial stage creation',
-          data: this.getStageData(createDto, createDto.currentStage),
-          fileHashes: createDto.fileHashes || [],
+          data: this.getStageData(createDto, initialStage),
+          location: createDto.location || 'Not specified',
+          notes: createDto.notes || '',
+          fileHashes
         }
       });
 
-      return this.mapToResponseDto(record);
+      // 6. Generate data hash
+      const dataHash = this.generateDataHash({
+        productId: record.productId,
+        sourceType: record.sourceType,
+        speciesName: record.speciesName,
+        initialStage,
+        timestamp: record.createdAt.getTime(),
+        creator: userId
+      });
+
+      // 7. Update with data hash
+      const updatedRecord = await this.prismaService.supplyChainRecord.update({
+        where: { id: record.id },
+        data: { dataHash },
+        include: {
+          user: { include: { profile: true } },
+          stageHistory: {
+            include: { user: { include: { profile: true } } },
+            orderBy: { timestamp: 'asc' }
+          }
+        }
+      });
+
+      // 8. Record on blockchain (async)
+      this.recordOnBlockchainAsync(record.id, {
+        recordId: record.id,
+        productId: record.productId,
+        dataHash,
+        stage: initialStage,
+        userId,
+        timestamp: record.createdAt.getTime()
+      });
+
+      this.logger.log(`✅ Supply chain record created: ${record.id}`);
+
+      return this.mapToResponseDto(updatedRecord);
+
     } catch (error) {
-      if (error instanceof BadRequestException || error instanceof ForbiddenException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Failed to create supply chain record');
+      this.logger.error('Failed to create supply chain record:', error);
+      throw error;
     }
   }
 
-  async findAll(userId?: string, sourceType?: SourceType, stage?: SupplyChainStage, isPublic?: boolean): Promise<SupplyChainRecordResponseDto[]> {
-    const where: any = {};
+  // ===== UPDATE SUPPLY CHAIN STAGE =====
 
-    if (userId) {
-      where.userId = userId;
-    }
+  async updateSupplyChainStage(
+    userId: string,
+    productId: string,
+    updateDto: UpdateSupplyChainStageDto,
+    files?: Express.Multer.File[]
+  ): Promise<SupplyChainRecordResponseDto> {
+    try {
+      this.logger.log(`Updating supply chain stage: ${productId} to ${updateDto.newStage} by user: ${userId}`);
 
-    if (sourceType) {
-      where.sourceType = sourceType;
-    }
-
-    if (stage) {
-      where.currentStage = stage;
-    }
-
-    if (isPublic !== undefined) {
-      where.isPublic = isPublic;
-    }
-
-    const records = await this.prisma.supplyChainRecord.findMany({
-      where,
-      include: {
-        user: {
-          include: { profile: true }
-        },
-        stageHistory: {
-          include: {
-            user: {
-              include: { profile: true }
-            }
-          },
-          orderBy: { timestamp: 'asc' }
+      // 1. Get existing record
+      const record = await this.prismaService.supplyChainRecord.findUnique({
+        where: { productId },
+        include: {
+          stageHistory: { orderBy: { timestamp: 'desc' } },
+          user: { include: { profile: true } }
         }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    return records.map(record => this.mapToResponseDto(record));
-  }
-
-  async findOne(productId: string, userId?: string): Promise<SupplyChainRecordResponseDto> {
-    const record = await this.prisma.supplyChainRecord.findUnique({
-      where: { productId },
-      include: {
-        user: {
-          include: { profile: true }
-        },
-        stageHistory: {
-          include: {
-            user: {
-              include: { profile: true }
-            }
-          },
-          orderBy: { timestamp: 'asc' }
-        }
-      }
-    });
-
-    if (!record) {
-      throw new NotFoundException('Supply chain record not found');
-    }
-
-    // Check access permissions for private records
-    if (!record.isPublic && userId) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
       });
 
-      if (record.userId !== userId && user?.role !== UserRole.ADMIN) {
-        throw new ForbiddenException('Insufficient permissions to access this record');
+      if (!record) {
+        throw new NotFoundException('Supply chain record not found');
       }
-    }
 
-    return this.mapToResponseDto(record);
-  }
+      // 2. Validate user and stage transition
+      const user = await this.prismaService.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
 
-  async updateStage(productId: string, userId: string, updateDto: UpdateSupplyChainStageDto): Promise<SupplyChainRecordResponseDto> {
-    const record = await this.prisma.supplyChainRecord.findUnique({
-      where: { productId }
-    });
+      if (!this.canUserUpdateToStage(user.role, updateDto.newStage, record.currentStage)) {
+        throw new ForbiddenException(`Cannot transition from ${record.currentStage} to ${updateDto.newStage}`);
+      }
 
-    if (!record) {
-      throw new NotFoundException('Supply chain record not found');
-    }
+      // 3. Validate stage sequence
+      if (!this.isValidStageTransition(record.currentStage, updateDto.newStage)) {
+        throw new BadRequestException(`Invalid stage transition from ${record.currentStage} to ${updateDto.newStage}`);
+      }
 
-    // Validate stage progression
-    if (!this.isValidStageProgression(record.currentStage as SupplyChainStage, updateDto.newStage)) {
-      throw new BadRequestException('Invalid stage progression');
-    }
+      // 4. Process uploaded files
+      let fileHashes: string[] = [];
+      if (files && files.length > 0) {
+        const uploadResults = await this.filesService.uploadFiles(files);
+        fileHashes = uploadResults.map(result => result.hash).filter(hash => hash);
+      }
 
-    // Check if user has permission to update this stage
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      throw new ForbiddenException('User not found');
-    }
-
-    if (!this.canUserUpdateStage(user.role, updateDto.newStage)) {
-      throw new ForbiddenException('Insufficient permissions to update to this stage');
-    }
-
-    // Upload updated data to IPFS if requested
-    let newDataHash = record.dataHash;
-    if (updateDto.updateIPFS) {
-      const ipfsData = {
-        productId,
-        currentStage: updateDto.newStage,
-        stageData: updateDto.stageData,
-        location: updateDto.location,
-        notes: updateDto.notes,
-        timestamp: new Date().toISOString(),
-        updatedBy: user?.address || userId
-      };
-
-      const uploadResult = await this.filesService.uploadJson(
-        ipfsData,
-        `supply-chain-${productId}-${updateDto.newStage.toLowerCase()}.json`,
-        productId
-      );
-      newDataHash = uploadResult.hash;
-    }
-
-    // Update record and create stage history entry
-    const [updatedRecord] = await Promise.all([
-      this.prisma.supplyChainRecord.update({
+      // 5. Update record
+      const updatedRecord = await this.prismaService.supplyChainRecord.update({
         where: { productId },
         data: {
           currentStage: updateDto.newStage,
-          dataHash: newDataHash,
-          updatedAt: new Date(),
+          ...this.getUpdateDataForStage(updateDto.newStage, updateDto.stageData),
+          updatedAt: new Date()
         },
+        include: {
+          user: { include: { profile: true } },
+          stageHistory: {
+            include: { user: { include: { profile: true } } },
+            orderBy: { timestamp: 'asc' }
+          }
+        }
+      });
+
+      // 6. Add stage history
+      await this.prismaService.supplyChainStageHistory.create({
+        data: {
+          productId: record.productId,
+          stage: updateDto.newStage,
+          userId,
+          timestamp: new Date(),
+          data: updateDto.stageData,
+          location: updateDto.location || 'Not specified',
+          notes: updateDto.notes || '',
+          fileHashes
+        }
+      });
+
+      // 7. Update on blockchain (async)
+      const previousStageHash = this.getLastStageHash(record.stageHistory);
+      this.updateSupplyChainStageOnBlockchainAsync(productId, {
+        productId,
+        newStage: updateDto.newStage,
+        stageDataHash: this.generateDataHash(updateDto.stageData),
+        previousStageHash,
+        userId,
+        timestamp: Date.now()
+      });
+
+      this.logger.log(`✅ Supply chain stage updated: ${productId} -> ${updateDto.newStage}`);
+
+      return this.mapToResponseDto(updatedRecord);
+
+    } catch (error) {
+      this.logger.error('Failed to update supply chain stage:', error);
+      throw error;
+    }
+  }
+
+  // ===== GET SUPPLY CHAIN RECORDS =====
+
+  async getSupplyChainRecords(
+    userId: string,
+    query: GetSupplyChainRecordsDto
+  ): Promise<PaginatedSupplyChainResponseDto> {
+    try {
+      const { page = 1, limit = 10, status, stage, sourceType, species, search, creatorId } = query;
+      const skip = (page - 1) * limit;
+
+      // Build where clause
+      const where: any = {};
+
+      // If not admin, only show user's own records or public records
+      const user = await this.prismaService.user.findUnique({ where: { id: userId } });
+      if (user?.role !== 'ADMIN') {
+        where.OR = [
+          { userId },
+          { isPublic: true }
+        ];
+      }
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (stage) {
+        where.currentStage = stage;
+      }
+
+      if (sourceType) {
+        where.sourceType = sourceType;
+      }
+
+      if (species) {
+        where.speciesName = { contains: species, mode: 'insensitive' };
+      }
+
+      if (creatorId) {
+        where.userId = creatorId;
+      }
+
+      if (search) {
+        where.OR = [
+          { productId: { contains: search, mode: 'insensitive' } },
+          { productName: { contains: search, mode: 'insensitive' } },
+          { speciesName: { contains: search, mode: 'insensitive' } },
+          { batchId: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      // Get total count and records
+      const [total, records] = await Promise.all([
+        this.prismaService.supplyChainRecord.count({ where }),
+        this.prismaService.supplyChainRecord.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: { include: { profile: true } },
+            stageHistory: {
+              include: { user: { include: { profile: true } } },
+              orderBy: { timestamp: 'asc' }
+            }
+          }
+        })
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: records.map(record => this.mapToResponseDto(record)),
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to get supply chain records:', error);
+      throw error;
+    }
+  }
+
+  // ===== GET SINGLE RECORD =====
+
+  async getSupplyChainRecordByProductId(
+    productId: string,
+    userId?: string
+  ): Promise<SupplyChainRecordResponseDto> {
+    try {
+      const record = await this.prismaService.supplyChainRecord.findUnique({
+        where: { productId },
+        include: {
+          user: { include: { profile: true } },
+          stageHistory: {
+            include: { user: { include: { profile: true } } },
+            orderBy: { timestamp: 'asc' }
+          }
+        }
+      });
+
+      if (!record) {
+        throw new NotFoundException('Supply chain record not found');
+      }
+
+      // Check if record is public or user has access
+      if (!record.isPublic && userId) {
+        const user = await this.prismaService.user.findUnique({ where: { id: userId } });
+        if (user?.role !== 'ADMIN' && record.userId !== userId) {
+          throw new ForbiddenException('Access denied to this record');
+        }
+      }
+
+      return this.mapToResponseDto(record);
+
+    } catch (error) {
+      this.logger.error('Failed to get supply chain record:', error);
+      throw error;
+    }
+  }
+
+  // ===== QR CODE GENERATION =====
+
+  async generateQRCode(
+    userId: string,
+    productId: string,
+    qrDto: GenerateQRCodeDto
+  ): Promise<QRCodeResponseDto> {
+    try {
+      const record = await this.prismaService.supplyChainRecord.findUnique({
+        where: { productId }
+      });
+
+      if (!record) {
+        throw new NotFoundException('Supply chain record not found');
+      }
+
+      // Check permissions
+      const user = await this.prismaService.user.findUnique({ where: { id: userId } });
+      if (user?.role !== 'ADMIN' && record.userId !== userId) {
+        throw new ForbiddenException('Access denied to generate QR code');
+      }
+
+      return this.qrCodeService.generateQRCode(productId, qrDto);
+
+    } catch (error) {
+      this.logger.error('Failed to generate QR code:', error);
+      throw error;
+    }
+  }
+
+  // ===== CONSUMER FEEDBACK =====
+
+  async addConsumerFeedback(
+    productId: string,
+    feedbackDto: ConsumerFeedbackDto
+  ): Promise<any> {
+    try {
+      const record = await this.prismaService.supplyChainRecord.findUnique({
+        where: { productId }
+      });
+
+      if (!record) {
+        throw new NotFoundException('Supply chain record not found');
+      }
+
+      if (!record.isPublic) {
+        throw new ForbiddenException('Feedback not allowed for private records');
+      }
+
+      // Store feedback (you'll need to create a feedback table)
+      // This is a placeholder implementation
+
+      this.logger.log(`Consumer feedback added for product: ${productId}`);
+
+      return { message: 'Feedback added successfully' };
+
+    } catch (error) {
+      this.logger.error('Failed to add consumer feedback:', error);
+      throw error;
+    }
+  }
+
+  // ===== PUBLIC TRACEABILITY METHODS =====
+
+  /**
+   * Get public traceability information for a product
+   * This method provides detailed information about the product's journey
+   */
+  async traceProduct(productId: string): Promise<any> {
+    try {
+      this.logger.log(`Tracing product: ${productId}`);
+
+      const record = await this.prismaService.supplyChainRecord.findUnique({
+        where: { productId },
         include: {
           user: {
             include: { profile: true }
           },
           stageHistory: {
-            include: {
-              user: {
-                include: { profile: true }
-              }
+            include: { 
+              user: { include: { profile: true } }
             },
             orderBy: { timestamp: 'asc' }
           }
         }
-      }),
-      this.prisma.supplyChainStageHistory.create({
-        data: {
-          productId,
-          userId,
-          stage: updateDto.newStage,
-          location: updateDto.location || '',
-          timestamp: new Date(),
-          notes: updateDto.notes || '',
-          data: updateDto.stageData,
-          fileHashes: updateDto.fileHashes || [],
-        }
-      })
-    ]);
+      });
 
-    return this.mapToResponseDto(updatedRecord);
-  }
-
-  async getTraceability(productId: string): Promise<any> {
-    const record = await this.prisma.supplyChainRecord.findUnique({
-      where: { productId },
-      include: {
-        user: {
-          include: { profile: true }
-        },
-        stageHistory: {
-          include: {
-            user: {
-              include: { profile: true }
-            }
-          },
-          orderBy: { timestamp: 'asc' }
-        }
+      if (!record) {
+        throw new NotFoundException('Product not found');
       }
-    });
 
-    if (!record) {
-      throw new NotFoundException('Product not found');
-    }
+      // Only return data if the record is public or if it's a simple trace request
+      if (!record.isPublic) {
+        // Return minimal information for private records
+        return {
+          exists: true,
+          public: false,
+          productId: record.productId,
+          speciesName: record.speciesName,
+          productName: record.productName,
+          message: 'This product record is private'
+        };
+      }
 
-    if (!record.isPublic) {
-      throw new ForbiddenException('This product is not available for public tracing');
-    }
-
-    // Calculate journey statistics
-    const totalStages = record.stageHistory.length;
-    const timeInSupplyChain = record.stageHistory.length > 0
-      ? new Date().getTime() - new Date(record.stageHistory[0].timestamp).getTime()
-      : 0;
-    const daysInSupplyChain = Math.floor(timeInSupplyChain / (1000 * 60 * 60 * 24));
-
-    return {
-      product: {
-        id: record.productId,
-        name: record.productName,
-        species: record.speciesName,
+      // For public records, return full traceability information
+      const traceabilityData = {
+        productId: record.productId,
+        speciesName: record.speciesName,
+        productName: record.productName,
+        productDescription: record.productDescription,
         sourceType: record.sourceType,
-        description: record.productDescription,
         currentStage: record.currentStage,
-        sustainabilityScore: record.sustainabilityScore,
-        certifications: record.certifications,
+        status: record.productStatus,
         batchId: record.batchId,
-        tags: record.tags,
-      },
-      journey: record.stageHistory.map(stage => ({
-        stage: stage.stage,
-        timestamp: stage.timestamp,
-        location: stage.location,
-        stakeholder: {
-          name: stage.user.profile
-            ? `${stage.user.profile.firstName || ''} ${stage.user.profile.lastName || ''}`.trim()
-            : 'Unknown',
-          organization: stage.user.profile?.organization || 'Unknown Organization',
-          role: stage.user.role,
-          address: stage.user.address.slice(0, 6) + '...' + stage.user.address.slice(-4)
-        },
-        notes: stage.notes,
-        data: stage.data,
-        fileHashes: stage.fileHashes,
-      })),
-      metadata: {
+        isPublic: record.isPublic,
         createdAt: record.createdAt,
-        lastUpdated: record.updatedAt,
-        totalStages,
-        daysInSupplyChain,
-        dataHash: record.dataHash,
+        updatedAt: record.updatedAt,
+
+        // Creator information (anonymized for privacy)
+        creator: {
+          organization: record.user.profile?.organization || 'Not specified',
+          role: record.user.role
+        },
+
+        // Stage history with detailed journey
+        stageHistory: record.stageHistory.map(stage => ({
+          stage: stage.stage,
+          timestamp: stage.timestamp,
+          location: stage.location,
+          notes: stage.notes,
+          data: stage.data,
+          updatedBy: {
+            organization: stage.user.profile?.organization || 'Not specified',
+            role: stage.user.role
+          }
+        })),
+
+        // Blockchain verification
+        blockchainVerified: !!record.blockchainHash,
         blockchainHash: record.blockchainHash,
-      }
-    };
+        dataHash: record.dataHash,
+
+        // File attachments (if any)
+        attachments: record.fileHashes.length,
+
+        // Summary statistics
+        totalStages: record.stageHistory.length,
+        daysInSupplyChain: Math.floor((new Date().getTime() - record.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+      };
+
+      this.logger.log(`✅ Product traced successfully: ${productId}`);
+      return traceabilityData;
+
+    } catch (error) {
+      this.logger.error(`Failed to trace product ${productId}:`, error);
+      throw error;
+    }
   }
 
-  async getStatistics(userId?: string): Promise<any> {
-    const where: any = {};
-    if (userId) {
-      where.userId = userId;
-    }
+  /**
+   * Get product feedback with pagination
+   */
+  async getProductFeedback(
+    productId: string,
+    verified: boolean = true,
+    limit: number = 10
+  ): Promise<any> {
+    try {
+      this.logger.log(`Getting feedback for product: ${productId}`);
 
-    const [total, bySourceType, byStage, byStatus, avgSustainability] = await Promise.all([
-      this.prisma.supplyChainRecord.count({ where }),
-      this.prisma.supplyChainRecord.groupBy({
-        by: ['sourceType'],
-        where,
-        _count: { sourceType: true }
-      }),
-      this.prisma.supplyChainRecord.groupBy({
-        by: ['currentStage'],
-        where,
-        _count: { currentStage: true }
-      }),
-      this.prisma.supplyChainRecord.groupBy({
-        by: ['productStatus'],
-        where,
-        _count: { productStatus: true }
-      }),
-      this.prisma.supplyChainRecord.aggregate({
+      // Check if product exists and is public
+      const record = await this.prismaService.supplyChainRecord.findUnique({
+        where: { productId },
+        select: { isPublic: true, productName: true, speciesName: true }
+      });
+
+      if (!record) {
+        throw new NotFoundException('Product not found');
+      }
+
+      if (!record.isPublic) {
+        throw new ForbiddenException('Feedback not available for private products');
+      }
+
+      // Get feedback from the ConsumerFeedback table
+      const feedback = await this.prismaService.consumerFeedback.findMany({
+        where: { 
+          productId,
+          // Add verified filter if needed (assuming there's a verified field)
+        },
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          consumerName: true,
+          purchaseLocation: true,
+          purchaseDate: true,
+          createdAt: true,
+          // Don't expose email for privacy
+        }
+      });
+
+      // Calculate feedback statistics
+      const totalFeedback = feedback.length;
+      const averageRating = totalFeedback > 0
+        ? feedback.reduce((sum, f) => sum + f.rating, 0) / totalFeedback
+        : 0;
+
+      const ratingDistribution = {
+        5: feedback.filter(f => f.rating === 5).length,
+        4: feedback.filter(f => f.rating === 4).length,
+        3: feedback.filter(f => f.rating === 3).length,
+        2: feedback.filter(f => f.rating === 2).length,
+        1: feedback.filter(f => f.rating === 1).length,
+      };
+
+      return {
+        productId,
+        productName: record.productName,
+        speciesName: record.speciesName,
+        feedbackSummary: {
+          totalFeedback,
+          averageRating: Math.round(averageRating * 10) / 10,
+          ratingDistribution
+        },
+        feedback: feedback.map(f => ({
+          id: f.id,
+          rating: f.rating,
+          comment: f.comment,
+          consumerName: f.consumerName || 'Anonymous',
+          purchaseLocation: f.purchaseLocation,
+          purchaseDate: f.purchaseDate,
+          createdAt: f.createdAt
+        }))
+      };
+
+    } catch (error) {
+      this.logger.error(`Failed to get product feedback for ${productId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get public statistics about the supply chain
+   */
+  async getPublicStatistics(): Promise<any> {
+    try {
+      this.logger.log('Getting public supply chain statistics');
+
+      const [
+        totalPublicProducts,
+        totalStages,
+        productsBySourceType,
+        productsByCurrentStage,
+        recentActivity,
+        topSpecies
+      ] = await Promise.all([
+        // Total public products
+        this.prismaService.supplyChainRecord.count({
+          where: { isPublic: true }
+        }),
+
+        // Total stages tracked
+        this.prismaService.supplyChainStageHistory.count(),
+
+        // Products by source type
+        this.prismaService.supplyChainRecord.groupBy({
+          by: ['sourceType'],
+          where: { isPublic: true },
+          _count: { sourceType: true }
+        }),
+
+        // Products by current stage
+        this.prismaService.supplyChainRecord.groupBy({
+          by: ['currentStage'],
+          where: { isPublic: true },
+          _count: { currentStage: true }
+        }),
+
+        // Recent activity (last 30 days)
+        this.prismaService.supplyChainRecord.count({
+          where: {
+            isPublic: true,
+            createdAt: {
+              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            }
+          }
+        }),
+
+        // Top species
+        this.prismaService.supplyChainRecord.groupBy({
+          by: ['speciesName'],
+          where: { isPublic: true },
+          _count: { speciesName: true },
+          orderBy: { _count: { speciesName: 'desc' } },
+          take: 5
+        })
+      ]);
+
+      // Calculate additional metrics
+      const blockchainVerifiedCount = await this.prismaService.supplyChainRecord.count({
         where: {
-          ...where,
-          sustainabilityScore: { not: null }
-        },
-        _avg: { sustainabilityScore: true },
-        _count: { sustainabilityScore: true }
-      })
-    ]);
-
-    const sourceTypeCounts = bySourceType.reduce((acc, item) => {
-      acc[item.sourceType] = item._count.sourceType;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const stageCounts = byStage.reduce((acc, item) => {
-      acc[item.currentStage] = item._count.currentStage;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const statusCounts = byStatus.reduce((acc, item) => {
-      acc[item.productStatus] = item._count.productStatus;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return {
-      total,
-      sourceTypeCounts,
-      stageCounts,
-      statusCounts,
-      sustainability: {
-        averageScore: avgSustainability._avg.sustainabilityScore || 0,
-        totalRated: avgSustainability._count.sustainabilityScore || 0
-      },
-      lastUpdated: new Date().toISOString()
-    };
-  }
-
-  async searchProducts(query: string, userId?: string, isPublicOnly: boolean = false): Promise<SupplyChainRecordResponseDto[]> {
-    const where: any = {
-      OR: [
-        { productId: { contains: query, mode: 'insensitive' } },
-        { productName: { contains: query, mode: 'insensitive' } },
-        { speciesName: { contains: query, mode: 'insensitive' } },
-        { productDescription: { contains: query, mode: 'insensitive' } },
-        { batchId: { contains: query, mode: 'insensitive' } },
-      ]
-    };
-
-    if (userId && !isPublicOnly) {
-      where.userId = userId;
-    }
-
-    if (isPublicOnly) {
-      where.isPublic = true;
-    }
-
-    const records = await this.prisma.supplyChainRecord.findMany({
-      where,
-      include: {
-        user: {
-          include: { profile: true }
-        },
-        stageHistory: {
-          include: {
-            user: {
-              include: { profile: true }
-            }
-          },
-          orderBy: { timestamp: 'asc' }
+          isPublic: true,
+          blockchainHash: { not: null }
         }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50 // Limit search results
-    });
+      });
 
-    return records.map(record => this.mapToResponseDto(record));
-  }
-
-  async updateProductStatus(productId: string, userId: string, status: ProductStatus): Promise<SupplyChainRecordResponseDto> {
-    const record = await this.prisma.supplyChainRecord.findUnique({
-      where: { productId }
-    });
-
-    if (!record) {
-      throw new NotFoundException('Supply chain record not found');
-    }
-
-    // Check permissions
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (record.userId !== userId && user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Insufficient permissions to update product status');
-    }
-
-    const updatedRecord = await this.prisma.supplyChainRecord.update({
-      where: { productId },
-      data: {
-        productStatus: status,
-        updatedAt: new Date(),
-      },
-      include: {
-        user: {
-          include: { profile: true }
+      // Get average time in supply chain
+      const completedProducts = await this.prismaService.supplyChainRecord.findMany({
+        where: {
+          isPublic: true,
+          currentStage: SupplyChainStage.CONSUMER
         },
-        stageHistory: {
-          include: {
-            user: {
-              include: { profile: true }
-            }
-          },
-          orderBy: { timestamp: 'asc' }
+        select: {
+          createdAt: true,
+          updatedAt: true
         }
-      }
-    });
+      });
 
-    return this.mapToResponseDto(updatedRecord);
+      const averageDaysInSupplyChain = completedProducts.length > 0
+        ? completedProducts.reduce((sum, product) => {
+          const days = Math.floor((product.updatedAt.getTime() - product.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+          return sum + days;
+        }, 0) / completedProducts.length
+        : 0;
+
+      const statistics = {
+        overview: {
+          totalPublicProducts,
+          totalStages,
+          blockchainVerified: blockchainVerifiedCount,
+          verificationRate: totalPublicProducts > 0 ? Math.round((blockchainVerifiedCount / totalPublicProducts) * 100) : 0,
+          recentActivity,
+          averageDaysInSupplyChain: Math.round(averageDaysInSupplyChain)
+        },
+
+        sourceTypes: productsBySourceType.map(item => ({
+          type: item.sourceType,
+          count: item._count.sourceType
+        })),
+
+        stageDistribution: productsByCurrentStage.map(item => ({
+          stage: item.currentStage,
+          count: item._count.currentStage
+        })),
+
+        topSpecies: topSpecies.map(item => ({
+          species: item.speciesName,
+          count: item._count.speciesName
+        })),
+
+        // Sustainability metrics
+        sustainability: {
+          trackedProducts: totalPublicProducts,
+          transparencyScore: totalPublicProducts > 0 ? Math.round((totalPublicProducts / (totalPublicProducts + 100)) * 100) : 0, // Placeholder calculation
+          avgStagesPerProduct: totalPublicProducts > 0 ? Math.round(totalStages / totalPublicProducts) : 0
+        },
+
+        lastUpdated: new Date()
+      };
+
+      this.logger.log(`✅ Public statistics retrieved successfully`);
+      return statistics;
+
+    } catch (error) {
+      this.logger.error('Failed to get public statistics:', error);
+      throw error;
+    }
   }
 
-  private validateStageForSourceType(sourceType: SourceType, stage: SupplyChainStage): void {
-    const farmedStages = [SupplyChainStage.HATCHERY, SupplyChainStage.GROW_OUT, SupplyChainStage.HARVEST];
-    const wildStages = [SupplyChainStage.FISHING];
-    const commonStages = [SupplyChainStage.PROCESSING, SupplyChainStage.DISTRIBUTION, SupplyChainStage.RETAIL];
+  // ===== UTILITY METHODS =====
 
+  private determineInitialStage(sourceType: SourceType, userRole: string): SupplyChainStage {
     if (sourceType === SourceType.FARMED) {
-      if (!farmedStages.includes(stage) && !commonStages.includes(stage)) {
-        throw new BadRequestException('Invalid stage for farmed products');
+      if (userRole === 'FARMER') {
+        return SupplyChainStage.HATCHERY;
       }
     } else if (sourceType === SourceType.WILD_CAPTURE) {
-      if (!wildStages.includes(stage) && !commonStages.includes(stage)) {
-        throw new BadRequestException('Invalid stage for wild-capture products');
+      if (userRole === 'FISHERMAN') {
+        return SupplyChainStage.FISHING;
       }
     }
-  }
 
-  private isValidStageProgression(currentStage: SupplyChainStage, newStage: SupplyChainStage): boolean {
-    const stageOrder = {
-      [SupplyChainStage.HATCHERY]: 1,
-      [SupplyChainStage.GROW_OUT]: 2,
-      [SupplyChainStage.HARVEST]: 3,
-      [SupplyChainStage.FISHING]: 3, // Same level as harvest
-      [SupplyChainStage.PROCESSING]: 4,
-      [SupplyChainStage.DISTRIBUTION]: 5,
-      [SupplyChainStage.RETAIL]: 6,
+    // Default fallback based on role
+    const roleStageMapping = {
+      FARMER: SupplyChainStage.HARVEST,
+      FISHERMAN: SupplyChainStage.FISHING,
+      PROCESSOR: SupplyChainStage.PROCESSING,
+      TRADER: SupplyChainStage.TRANSPORT,
+      RETAILER: SupplyChainStage.RETAIL
     };
 
-    const currentOrder = stageOrder[currentStage];
-    const newOrder = stageOrder[newStage];
-
-    // Allow progression to the same stage or next stage
-    return newOrder >= currentOrder;
+    return roleStageMapping[userRole] || SupplyChainStage.PROCESSING;
   }
 
-  private canUserUpdateStage(userRole: string, stage: SupplyChainStage): boolean {
-    const stagePermissions = {
-      [SupplyChainStage.HATCHERY]: [UserRole.FARMER, UserRole.ADMIN],
-      [SupplyChainStage.GROW_OUT]: [UserRole.FARMER, UserRole.ADMIN],
-      [SupplyChainStage.HARVEST]: [UserRole.FARMER, UserRole.FISHERMAN, UserRole.ADMIN],
-      [SupplyChainStage.FISHING]: [UserRole.FISHERMAN, UserRole.ADMIN],
-      [SupplyChainStage.PROCESSING]: [UserRole.PROCESSOR, UserRole.ADMIN],
-      [SupplyChainStage.DISTRIBUTION]: [UserRole.TRADER, UserRole.ADMIN],
-      [SupplyChainStage.RETAIL]: [UserRole.RETAILER, UserRole.ADMIN],
-    };
+  private canUserCreateStage(userRole: string, stage: SupplyChainStage): boolean {
+    return this.stagePermissions[stage]?.includes(userRole) || false;
+  }
 
-    return stagePermissions[stage]?.includes(userRole as UserRole) || false;
+  private canUserUpdateToStage(userRole: string, newStage: SupplyChainStage, currentStage: string): boolean {
+    return this.canUserCreateStage(userRole, newStage) &&
+      this.isValidStageTransition(currentStage, newStage);
+  }
+
+  private isValidStageTransition(currentStage: string, newStage: SupplyChainStage): boolean {
+    return this.stageTransitions[currentStage]?.includes(newStage) || false;
   }
 
   private getStageData(createDto: CreateSupplyChainRecordDto, stage: SupplyChainStage): any {
-    switch (stage) {
-      case SupplyChainStage.HATCHERY:
-        return createDto.hatcheryData;
-      case SupplyChainStage.GROW_OUT:
-        return createDto.growOutData;
-      case SupplyChainStage.HARVEST:
-        return createDto.harvestData;
-      case SupplyChainStage.FISHING:
-        return createDto.fishingData;
-      case SupplyChainStage.PROCESSING:
-        return createDto.processingData;
-      case SupplyChainStage.DISTRIBUTION:
-        return createDto.distributionData;
-      case SupplyChainStage.RETAIL:
-        return createDto.retailData;
-      default:
-        return null;
-    }
+    const stageDataMapping = {
+      [SupplyChainStage.HATCHERY]: createDto.hatcheryData,
+      [SupplyChainStage.GROW_OUT]: createDto.growOutData,
+      [SupplyChainStage.FISHING]: createDto.fishingData,
+      [SupplyChainStage.HARVEST]: createDto.harvestData,
+      [SupplyChainStage.PROCESSING]: createDto.processingData,
+      [SupplyChainStage.COLD_STORAGE]: createDto.storageData,
+      [SupplyChainStage.TRANSPORT]: createDto.transportData
+    };
+
+    return stageDataMapping[stage] || {};
+  }
+
+  private getUpdateDataForStage(stage: SupplyChainStage, stageData: any): any {
+    const updateDataMapping = {
+      [SupplyChainStage.HATCHERY]: { hatcheryData: stageData },
+      [SupplyChainStage.GROW_OUT]: { growOutData: stageData },
+      [SupplyChainStage.FISHING]: { fishingData: stageData },
+      [SupplyChainStage.HARVEST]: { harvestData: stageData },
+      [SupplyChainStage.PROCESSING]: { processingData: stageData },
+      [SupplyChainStage.COLD_STORAGE]: { storageData: stageData },
+      [SupplyChainStage.TRANSPORT]: { transportData: stageData }
+    };
+
+    return updateDataMapping[stage] || {};
+  }
+
+  private getLastStageHash(stageHistory: any[]): string {
+    if (stageHistory.length === 0) return '';
+    return this.generateDataHash(stageHistory[stageHistory.length - 1]);
+  }
+
+  private generateDataHash(data: any): string {
+    const dataString = JSON.stringify(data, Object.keys(data).sort());
+    return createHash('sha256').update(dataString).digest('hex');
   }
 
   private mapToResponseDto(record: any): SupplyChainRecordResponseDto {
     return {
       id: record.id,
       productId: record.productId,
+      userId: record.userId,
       batchId: record.batchId,
       sourceType: record.sourceType,
       speciesName: record.speciesName,
       productName: record.productName,
       productDescription: record.productDescription,
+      currentStage: record.currentStage,
+      status: record.productStatus, // Map productStatus to status for API response
+      isPublic: record.isPublic,
       hatcheryData: record.hatcheryData,
       growOutData: record.growOutData,
-      harvestData: record.harvestData,
       fishingData: record.fishingData,
+      harvestData: record.harvestData,
       processingData: record.processingData,
-      distributionData: record.distributionData,
-      retailData: record.retailData,
-      currentStage: record.currentStage,
-      productStatus: record.productStatus,
-      certifications: record.certifications,
-      qualityMetrics: record.qualityMetrics,
-      fileHashes: record.fileHashes,
-      sustainabilityScore: record.sustainabilityScore,
-      isPublic: record.isPublic,
-      tags: record.tags,
+      storageData: record.distributionData, // Map distributionData back to storageData
+      transportData: undefined, // Not available in schema
+      fileHashes: record.fileHashes || [],
       dataHash: record.dataHash,
       blockchainHash: record.blockchainHash,
       createdAt: record.createdAt,
@@ -610,27 +897,76 @@ export class SupplyChainService {
         profile: record.user.profile ? {
           firstName: record.user.profile.firstName,
           lastName: record.user.profile.lastName,
-          organization: record.user.profile.organization,
-        } : null
+          organization: record.user.profile.organization
+        } : undefined
       },
       stageHistory: record.stageHistory?.map(stage => ({
         id: stage.id,
         stage: stage.stage,
-        location: stage.location,
+        userId: stage.userId,
         timestamp: stage.timestamp,
-        notes: stage.notes,
         data: stage.data,
-        fileHashes: stage.fileHashes,
+        location: stage.location,
+        notes: stage.notes,
+        fileHashes: stage.fileHashes || [],
+        blockchainHash: stage.blockchainHash,
         user: {
           id: stage.user.id,
+          address: stage.user.address,
           role: stage.user.role,
           profile: stage.user.profile ? {
             firstName: stage.user.profile.firstName,
             lastName: stage.user.profile.lastName,
-            organization: stage.user.profile.organization,
-          } : null
+            organization: stage.user.profile.organization
+          } : undefined
         }
-      })) || []
+      })) || [],
+      feedbackCount: 0, // Placeholder
+      averageRating: 0 // Placeholder
     };
+  }
+
+  // ===== ASYNC BLOCKCHAIN OPERATIONS =====
+
+  private async recordOnBlockchainAsync(recordId: string, blockchainData: any): Promise<void> {
+    try {
+      const txResult = await this.blockchainService.recordSupplyChainData(blockchainData);
+
+      await this.prismaService.supplyChainRecord.update({
+        where: { id: recordId },
+        data: {
+          blockchainHash: txResult.transactionHash
+        }
+      });
+
+      this.logger.log(`✅ Supply chain record ${recordId} recorded on blockchain: ${txResult.transactionHash}`);
+
+    } catch (error) {
+      this.logger.error(`❌ Failed to record supply chain record ${recordId} on blockchain:`, error);
+
+      await this.prismaService.supplyChainRecord.update({
+        where: { id: recordId },
+        data: { productStatus: 'BLOCKCHAIN_FAILED' }
+      });
+    }
+  }
+
+  private async updateSupplyChainStageOnBlockchainAsync(productId: string, blockchainData: any): Promise<void> {
+    try {
+      const txResult = await this.blockchainService.updateSupplyChainStage(blockchainData);
+
+      // Update the main supply chain record with blockchain hash since stage history doesn't have this field
+      await this.prismaService.supplyChainRecord.updateMany({
+        where: { productId },
+        data: {
+          blockchainHash: txResult.transactionHash
+        }
+      });
+
+      this.logger.log(`✅ Supply chain stage updated on blockchain: ${txResult.transactionHash}`);
+
+    } catch (error) {
+      this.logger.error(`❌ Failed to update supply chain stage on blockchain:`, error);
+    }
   }
 }

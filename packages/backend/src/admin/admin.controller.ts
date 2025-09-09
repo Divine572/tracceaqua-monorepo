@@ -1,173 +1,341 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
-import { AdminService } from './admin.service';
+import {
+    Controller,
+    Get,
+    Post,
+    Put,
+    Delete,
+    Param,
+    Body,
+    Query,
+    Request,
+    UseGuards,
+    HttpCode,
+    HttpStatus,
+    ParseUUIDPipe,
+    Res,
+} from '@nestjs/common';
+import { Response } from 'express';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBearerAuth,
+    ApiParam,
+    ApiQuery,
+} from '@nestjs/swagger';
+
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 
+import { AdminService } from './admin.service';
+import {
+    UpdateUserRoleDto,
+    UpdateUserStatusDto,
+    BulkUserActionDto,
+    ReviewRoleApplicationDto,
+    BulkApplicationActionDto,
+    AnalyticsQueryDto,
+    ExportDataDto,
+    GetSystemLogsDto,
+    SystemStatsDto,
+    SystemHealthDto,
+    PaginatedLogsDto,
+} from './dto/admin.dto';
+
 @ApiTags('Admin')
-@ApiBearerAuth()
+    @Controller('admin')
 @UseGuards(JwtAuthGuard, RoleGuard)
 @Roles(UserRole.ADMIN)
-@Controller('admin')
+    @ApiBearerAuth()
 export class AdminController {
     constructor(private readonly adminService: AdminService) { }
 
-    @Get('dashboard')
-    @ApiOperation({
-        summary: 'Get admin dashboard statistics',
-        description: 'Retrieve comprehensive dashboard statistics for admin panel'
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Dashboard statistics retrieved successfully'
-    })
-    async getDashboard() {
-        return this.adminService.getDashboardStats();
-    }
+    // ===== USER MANAGEMENT =====
 
     @Get('users')
     @ApiOperation({
-        summary: 'Get all users',
-        description: 'Retrieve paginated list of all users with management information'
-    })
-    @ApiQuery({ name: 'page', required: false, type: Number })
-    @ApiQuery({ name: 'limit', required: false, type: Number })
-    @ApiQuery({ name: 'role', required: false, enum: UserRole })
-    @ApiQuery({ name: 'status', required: false, type: String })
-    async getAllUsers(
-        @Query('page') page: string = '1',
-        @Query('limit') limit: string = '50',
-        @Query('role') role?: UserRole,
-        @Query('status') status?: string
-    ) {
-        return this.adminService.getAllUsers(
-            parseInt(page),
-            parseInt(limit),
-            role,
-            status
-        );
-    }
+      summary: 'Get all users (Admin)',
+      description: 'Get paginated list of all users with filtering options (Admin only)',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'role', required: false, enum: UserRole })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiResponse({
+      status: HttpStatus.OK,
+      description: 'Users retrieved successfully',
+  })
+  async getAllUsers(
+      @Query('page') page: string = '1',
+      @Query('limit') limit: string = '20',
+      @Query('role') role?: UserRole,
+      @Query('status') status?: string,
+      @Query('search') search?: string
+  ) {
+      const filters = { role, status, search };
+      return this.adminService.getAllUsers(parseInt(page), parseInt(limit), filters);
+  }
 
     @Put('users/:userId/role')
     @ApiOperation({
-        summary: 'Update user role',
-        description: 'Update the role of a specific user'
-    })
-    @ApiParam({ name: 'userId', description: 'User ID' })
-    async updateUserRole(
-        @Request() req,
-        @Param('userId') userId: string,
-        @Body() body: { role: UserRole; reason?: string }
-    ) {
-        return this.adminService.updateUserRole(
-            req.user.id,
-            userId,
-            body.role,
-            body.reason
-        );
-    }
+      summary: 'Update user role (Admin)',
+      description: 'Update the role of a specific user (Admin only)',
+  })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({
+      status: HttpStatus.OK,
+      description: 'User role updated successfully',
+  })
+  async updateUserRole(
+      @Param('userId', ParseUUIDPipe) userId: string,
+      @Request() req,
+      @Body() updateDto: UpdateUserRoleDto
+  ) {
+      return this.adminService.updateUserRole(req.user.id, userId, updateDto.role, updateDto.reason);
+  }
 
     @Put('users/:userId/status')
     @ApiOperation({
-        summary: 'Update user status',
-        description: 'Update the status of a specific user (active, suspended, banned)'
+      summary: 'Update user status (Admin)',
+      description: 'Update the status of a specific user (Admin only)',
+  })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({
+      status: HttpStatus.OK,
+      description: 'User status updated successfully',
+  })
+  async updateUserStatus(
+      @Param('userId', ParseUUIDPipe) userId: string,
+      @Request() req,
+      @Body() updateDto: UpdateUserStatusDto
+  ) {
+      return this.adminService.updateUserStatus(req.user.id, userId, updateDto.status, updateDto.reason);
+  }
+
+    @Post('users/bulk-action')
+    @ApiOperation({
+        summary: 'Perform bulk action on users (Admin)',
+        description: 'Perform bulk actions (activate, suspend, delete) on multiple users (Admin only)',
     })
-    @ApiParam({ name: 'userId', description: 'User ID' })
-    async updateUserStatus(
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Bulk action completed',
+    })
+    async bulkUserAction(
         @Request() req,
-        @Param('userId') userId: string,
-        @Body() body: { status: 'ACTIVE' | 'SUSPENDED' | 'BANNED'; reason?: string }
+        @Body() bulkDto: BulkUserActionDto
     ) {
-        return this.adminService.updateUserStatus(
-            req.user.id,
-            userId,
-            body.status,
-            body.reason
-        );
+        return this.adminService.bulkUserAction(req.user.id, bulkDto.userIds, bulkDto.action, bulkDto.reason);
     }
+
+    // ===== ROLE APPLICATION MANAGEMENT =====
 
     @Get('role-applications/pending')
     @ApiOperation({
-        summary: 'Get pending role applications',
-        description: 'Retrieve all pending role applications for review'
+      summary: 'Get pending role applications (Admin)',
+      description: 'Get all pending role applications for admin review (Admin only)',
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({
+      status: HttpStatus.OK,
+      description: 'Pending applications retrieved successfully',
+  })
+  async getPendingApplications(
+      @Query('limit') limit: string = '50'
+  ) {
+      return this.adminService.getPendingRoleApplications(parseInt(limit));
+  }
+
+    @Put('role-applications/:applicationId/review')
+    @ApiOperation({
+      summary: 'Review role application (Admin)',
+      description: 'Approve or reject a role application (Admin only)',
+  })
+  @ApiParam({ name: 'applicationId', description: 'Application ID' })
+  @ApiResponse({
+      status: HttpStatus.OK,
+      description: 'Application reviewed successfully',
+  })
+  async reviewApplication(
+      @Param('applicationId', ParseUUIDPipe) applicationId: string,
+      @Request() req,
+      @Body() reviewDto: ReviewRoleApplicationDto
+  ) {
+      return this.adminService.reviewRoleApplication(
+          req.user.id,
+          applicationId,
+        reviewDto.action,
+        reviewDto.feedback,
+        reviewDto.approvedRole
+    );
+  }
+
+    @Post('role-applications/bulk-review')
+    @ApiOperation({
+      summary: 'Bulk review applications (Admin)',
+      description: 'Approve or reject multiple applications at once (Admin only)',
+  })
+  @ApiResponse({
+      status: HttpStatus.OK,
+      description: 'Bulk review completed',
+  })
+  async bulkReviewApplications(
+      @Request() req,
+      @Body() bulkDto: BulkApplicationActionDto
+  ) {
+      const results: Array<{
+          applicationId: string;
+          success: boolean;
+          result?: any;
+          error?: string;
+      }> = [];
+      
+      for (const appId of bulkDto.applicationIds) {
+          try {
+              const result = await this.adminService.reviewRoleApplication(
+                  req.user.id,
+                  appId,
+                  bulkDto.action,
+                  bulkDto.reason
+              );
+              results.push({ applicationId: appId, success: true, result });
+          } catch (error) {
+              results.push({ applicationId: appId, success: false, error: error.message });
+          }
+      }
+      return { results };
+  }
+
+    // ===== SYSTEM ANALYTICS =====
+
+    @Get('stats')
+    @ApiOperation({
+        summary: 'Get system statistics (Admin)',
+        description: 'Get comprehensive system statistics and metrics (Admin only)',
     })
-    @ApiQuery({ name: 'limit', required: false, type: Number })
-    async getPendingApplications(@Query('limit') limit: string = '50') {
-        return this.adminService.getPendingRoleApplications(parseInt(limit));
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'System statistics retrieved successfully',
+        type: SystemStatsDto,
+    })
+    async getSystemStats(): Promise<SystemStatsDto> {
+        return this.adminService.getSystemStats();
     }
 
-    @Post('role-applications/:applicationId/review')
+    @Get('analytics')
     @ApiOperation({
-        summary: 'Review role application',
-        description: 'Approve or reject a role application'
+        summary: 'Get system analytics (Admin)',
+        description: 'Get detailed analytics with custom date ranges and grouping (Admin only)',
     })
-    @ApiParam({ name: 'applicationId', description: 'Application ID' })
-    async reviewApplication(
-        @Request() req,
-        @Param('applicationId') applicationId: string,
-        @Body() body: { action: 'approve' | 'reject'; feedback?: string }
-    ) {
-        return this.adminService.reviewRoleApplication(
-            req.user.id,
-            applicationId,
-            body.action,
-            body.feedback
-        );
+    @ApiQuery({ name: 'startDate', required: false, type: String })
+    @ApiQuery({ name: 'endDate', required: false, type: String })
+    @ApiQuery({ name: 'groupBy', required: false, enum: ['day', 'week', 'month', 'year'] })
+    @ApiQuery({ name: 'userRole', required: false, enum: UserRole })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Analytics data retrieved successfully',
+    })
+    async getAnalytics(@Query() query: AnalyticsQueryDto) {
+        return this.adminService.getAnalytics(query);
+  }
+
+    // ===== DATA EXPORT =====
+
+    @Post('export')
+    @ApiOperation({
+      summary: 'Export system data (Admin)',
+      description: 'Export system data in various formats (CSV, Excel, JSON) (Admin only)',
+  })
+  @ApiResponse({
+      status: HttpStatus.OK,
+      description: 'Data exported successfully',
+  })
+  async exportData(
+      @Body() exportDto: ExportDataDto,
+      @Res() res: Response
+  ) {
+        const data = await this.adminService.exportData(exportDto);
+
+        const filename = `tracceaqua_${exportDto.dataType}_${new Date().toISOString().split('T')[0]}`;
+        const extension = exportDto.format || 'csv';
+
+        res.setHeader('Content-Type', this.getContentType(extension));
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.${extension}"`);
+        res.send(data);
+    }
+
+    // ===== SYSTEM MONITORING =====
+
+    @Get('health')
+    @ApiOperation({
+        summary: 'Get system health status (Admin)',
+        description: 'Get comprehensive system health check (Admin only)',
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'System health retrieved successfully',
+        type: SystemHealthDto,
+    })
+    async getSystemHealth(): Promise<SystemHealthDto> {
+        return this.adminService.getSystemHealth();
     }
 
     @Get('logs')
     @ApiOperation({
-        summary: 'Get system logs',
-        description: 'Retrieve paginated system logs and admin actions'
+        summary: 'Get system logs (Admin)',
+        description: 'Get paginated system logs and admin actions (Admin only)',
     })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
-    @ApiQuery({ name: 'level', required: false, enum: ['info', 'warning', 'error'] })
+    @ApiQuery({ name: 'level', required: false, enum: ['error', 'warn', 'info', 'debug'] })
     @ApiQuery({ name: 'adminId', required: false, type: String })
-    async getSystemLogs(
-        @Query('page') page: string = '1',
-        @Query('limit') limit: string = '50',
-        @Query('level') level?: 'info' | 'warning' | 'error',
-        @Query('adminId') adminId?: string
-    ) {
-        return this.adminService.getSystemLogs(
-            parseInt(page),
-            parseInt(limit),
-            level,
-            adminId
-        );
+    @ApiQuery({ name: 'action', required: false, type: String })
+    @ApiQuery({ name: 'startDate', required: false, type: String })
+    @ApiQuery({ name: 'endDate', required: false, type: String })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'System logs retrieved successfully',
+        type: PaginatedLogsDto,
+    })
+    async getSystemLogs(@Query() query: GetSystemLogsDto): Promise<PaginatedLogsDto> {
+        return this.adminService.getSystemLogs(query);
     }
 
-    @Post('export')
+    // ===== EMERGENCY ACTIONS =====
+
+    @Post('emergency/maintenance-mode')
     @ApiOperation({
-        summary: 'Export system data',
-        description: 'Export system data in various formats'
+        summary: 'Enable maintenance mode (Admin)',
+        description: 'Enable system maintenance mode (Admin only)',
     })
-    async exportData(
-        @Body() body: {
-            dataType: 'users' | 'conservation' | 'supply_chain' | 'feedback';
-            format?: 'csv' | 'json';
-        }
-    ) {
-        return this.adminService.exportSystemData(body.dataType, body.format);
+    @HttpCode(HttpStatus.OK)
+    async enableMaintenanceMode(@Request() req) {
+        // Implementation would set maintenance mode
+        return { message: 'Maintenance mode enabled', enabledBy: req.user.id };
     }
 
-    @Post('maintenance')
+    @Delete('emergency/maintenance-mode')
     @ApiOperation({
-        summary: 'Perform system maintenance',
-        description: 'Initiate various system maintenance tasks'
-    })
-    async performMaintenance(
-        @Request() req,
-        @Body() body: {
-            maintenanceType: 'cleanup_old_files' | 'rebuild_indexes' | 'verify_data_integrity';
-        }
-    ) {
-        return this.adminService.performSystemMaintenance(
-            req.user.id,
-            body.maintenanceType
-        );
+      summary: 'Disable maintenance mode (Admin)',
+      description: 'Disable system maintenance mode (Admin only)',
+  })
+  @HttpCode(HttpStatus.OK)
+  async disableMaintenanceMode(@Request() req) {
+      // Implementation would disable maintenance mode
+      return { message: 'Maintenance mode disabled', disabledBy: req.user.id };
+  }
+
+    // ===== PRIVATE UTILITIES =====
+
+    private getContentType(format: string): string {
+        const mimeTypes = {
+            csv: 'text/csv',
+            xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            json: 'application/json'
+        };
+        return mimeTypes[format] || 'application/octet-stream';
     }
 }
