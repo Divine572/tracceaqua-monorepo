@@ -277,27 +277,18 @@ export class AuthService {
 
 
     /**
-     * Authenticate user with wallet signature
+     * Authenticate user with wallet address only
      */
     async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-        const { address, signature, message, email } = loginDto;
+        const { address, email } = loginDto;
 
         console.log('🔐 Login attempt for address:', address);
-        console.log('📝 Received signature type:', typeof signature);
-        console.log('📏 Signature length:', signature?.length);
 
-        // Verify wallet signature
-        const isValidSignature = await this.verifyWalletSignature(address, signature, message);
-
-        if (!isValidSignature) {
-            // Provide more specific error messages based on signature format
-            if (!signature || signature.length === 0) {
-                throw new UnauthorizedException('No signature provided');
-            } else if (signature.length > 200) {
-                throw new UnauthorizedException('Invalid signature format - appears to be contract call data instead of message signature');
-            } else {
-                throw new UnauthorizedException('Invalid wallet signature - signature verification failed');
-            }
+        // Validate address format
+        try {
+            ethers.getAddress(address);
+        } catch (error) {
+            throw new BadRequestException('Invalid wallet address format');
         }
 
         // Find or create user
@@ -384,12 +375,13 @@ export class AuthService {
      * Register new user (alternative flow)
      */
     async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-        const { address, signature, message, email, firstName, lastName } = registerDto;
+        const { address, email, firstName, lastName } = registerDto;
 
-        // Verify signature
-        const isValidSignature = await this.verifyWalletSignature(address, signature, message);
-        if (!isValidSignature) {
-            throw new UnauthorizedException('Invalid wallet signature');
+        // Validate address format
+        try {
+            ethers.getAddress(address);
+        } catch (error) {
+            throw new BadRequestException('Invalid wallet address format');
         }
 
         // Check if user already exists
