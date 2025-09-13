@@ -2,7 +2,6 @@
 
 # TracceAqua Backend Railway Deployment Script
 
-
 set -e
 
 echo "🚂 =============================================="
@@ -33,15 +32,32 @@ print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
+# Get the script directory and navigate to backend directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BACKEND_DIR="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
+
+print_info "Script location: $SCRIPT_DIR"
+print_info "Backend directory: $BACKEND_DIR"
+
+# Navigate to backend directory
+cd "$BACKEND_DIR"
+print_info "Changed to directory: $(pwd)"
+
 # Check if we're in the correct directory
 if [ ! -f "package.json" ]; then
-    print_error "Error: Must run from backend directory (packages/backend/)"
+    print_error "Error: Could not find package.json in backend directory"
     echo "Current directory: $(pwd)"
     echo "Expected files: package.json, prisma/, src/"
     exit 1
 fi
 
-print_info "Current directory: $(pwd)"
+# Verify this is the backend package
+if ! grep -q '"name".*"@tracceaqua/backend"' package.json 2>/dev/null; then
+    print_warning "Warning: This doesn't appear to be the backend package"
+    print_info "Proceeding anyway..."
+fi
+
+print_status "Confirmed backend directory location"
 
 # Check if Railway CLI is installed
 if ! command -v railway &> /dev/null; then
@@ -74,17 +90,36 @@ if [ ! -f ".railway" ] && [ ! -d ".railway" ]; then
     echo "Please select your TracceAqua backend project from the list:"
     railway link
     
-    if [ ! -f ".railway" ] && [ ! -d ".railway" ]; then
-        print_error "Failed to link Railway project"
-        exit 1
+    # Wait longer for the file to be created
+    print_info "Waiting for Railway project link to complete..."
+    sleep 5
+    
+    # Debug: List files to see what was created
+    print_info "Files in current directory:"
+    ls -la | grep -E "\.railway|railway" || echo "No .railway files found"
+    
+    # Check using Railway CLI status instead of just file existence
+    if railway status &>/dev/null; then
+        print_status "Railway project linked successfully (verified via CLI)"
+    else
+        print_warning "Railway link may have failed, but continuing anyway..."
+        print_info "You can manually verify with: railway status"
+        
+        # Ask user if they want to continue
+        read -p "Continue with deployment? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_error "Deployment cancelled"
+            exit 1
+        fi
     fi
-    print_status "Railway project linked successfully"
 else
     print_status "Railway project already linked"
 fi
 
 # Show current Railway project
-print_info "Railway project: $(railway status 2>/dev/null | grep 'Project:' | cut -d':' -f2 | xargs || echo 'Not found')"
+PROJECT_INFO=$(railway status 2>/dev/null | grep 'Project:' | cut -d':' -f2 | xargs || echo 'Not found')
+print_info "Railway project: $PROJECT_INFO"
 
 # Install dependencies
 print_info "Installing dependencies..."
@@ -166,11 +201,7 @@ echo "🎉 DEPLOYMENT SUMMARY"
 echo "🎉 =============================================="
 echo "✅ Application built and deployed"
 echo "✅ Prisma client generated"
-if echo "$ENV_VARS" | grep -q "DATABASE_URL"; then
-    echo "✅ Database migrations applied"
-else
-    echo "⚠️  Database migrations pending (set DATABASE_URL first)"
-fi
+echo "⏳ Database migrations pending - run after deployment"
 
 echo ""
 echo "🔗 USEFUL LINKS:"
@@ -181,10 +212,11 @@ echo "🔧 Shell: railway shell"
 
 echo ""
 echo "📝 NEXT STEPS:"
-echo "1. Set any missing environment variables in Railway dashboard"
-echo "2. Run database migrations if DATABASE_URL wasn't set: railway run npx prisma migrate deploy"
-echo "3. Update your frontend environment variables with the new backend URL"
-echo "4. Test the API endpoints: curl $DEPLOYMENT_URL/health"
+echo "1. Wait for deployment to complete (check railway logs)"
+echo "2. Run database migrations: railway run npx prisma migrate deploy"
+echo "3. Verify deployment: railway logs"
+echo "4. Test API health endpoint: curl $DEPLOYMENT_URL/health"
+echo "5. Update frontend environment variables with the backend URL"
 
 echo ""
 echo "💡 USEFUL COMMANDS:"
@@ -194,3 +226,4 @@ echo "📊 Check status: railway status"
 echo "🌐 Open in browser: railway open"
 
 print_status "TracceAqua backend deployment script completed!"
+

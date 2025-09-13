@@ -174,15 +174,20 @@ export class SupplyChainService {
         }
       });
 
-      // 8. Record on blockchain (async)
-      this.recordOnBlockchainAsync(record.id, {
-        recordId: record.id,
-        productId: record.productId,
-        dataHash,
-        stage: initialStage,
-        userId,
-        timestamp: record.createdAt.getTime()
-      });
+      // 8. Record on blockchain (async) - only if enabled
+      try {
+        this.recordOnBlockchainAsync(record.id, {
+          recordId: record.id,
+          productId: record.productId,
+          dataHash,
+          stage: initialStage,
+          userId,
+          timestamp: record.createdAt.getTime()
+        });
+      } catch (error) {
+        // Don't let blockchain errors affect the main supply chain creation
+        this.logger.warn('Blockchain recording failed, continuing with supply chain creation:', error.message);
+      }
 
       this.logger.log(`✅ Supply chain record created: ${record.id}`);
 
@@ -944,10 +949,22 @@ export class SupplyChainService {
     } catch (error) {
       this.logger.error(`❌ Failed to record supply chain record ${recordId} on blockchain:`, error);
 
-      await this.prismaService.supplyChainRecord.update({
-        where: { id: recordId },
-        data: { productStatus: 'BLOCKCHAIN_FAILED' }
-      });
+      // Check if it's a filter-related error (non-critical)
+      if (error.message && error.message.includes('filter not found')) {
+        this.logger.warn(`Filter error for record ${recordId} - this is usually temporary and can be retried later`);
+        // Don't mark as failed for filter errors, they're often temporary
+        return;
+      }
+
+      // For other blockchain errors, mark as failed
+      try {
+        await this.prismaService.supplyChainRecord.update({
+          where: { id: recordId },
+          data: { productStatus: 'BLOCKCHAIN_FAILED' }
+        });
+      } catch (dbError) {
+        this.logger.error(`Failed to update record status for ${recordId}:`, dbError);
+      }
     }
   }
 

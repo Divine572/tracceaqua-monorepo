@@ -17,10 +17,11 @@ import {
 @Injectable()
 export class BlockchainService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BlockchainService.name);
-  private provider: ethers.JsonRpcProvider;
+    private provider: ethers.JsonRpcProvider | ethers.WebSocketProvider;
     private signer: ethers.Wallet;
     private contract: ethers.Contract;
   private isInitialized = false;
+    private isWebSocketProvider = false;
 
     // Contract ABI (simplified for key functions)
     private readonly contractABI = [
@@ -45,12 +46,25 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
         private prismaService: PrismaService,
     ) { }
 
-  async onModuleInit() {
-    await this.initializeBlockchain();
-  }
-
-    async onModuleDestroy() {
+    async onModuleInit() {
+        const isEnabled = this.configService.get<boolean>('BLOCKCHAIN_ENABLED', true);
+        if (isEnabled) {
+            await this.initializeBlockchain();
+        } else {
+            this.logger.warn('⚠️ Blockchain functionality is disabled via configuration');
+        }
+    } async onModuleDestroy() {
         await this.stopEventListening();
+
+        // Clean up WebSocket connection if needed
+        if (this.isWebSocketProvider && this.provider) {
+            try {
+                await this.provider.destroy();
+                this.logger.log('WebSocket provider destroyed');
+            } catch (error) {
+                this.logger.error('Error destroying WebSocket provider:', error);
+            }
+        }
   }
 
     private async initializeBlockchain(): Promise<void> {
@@ -59,15 +73,32 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
 
         const rpcUrl = this.configService.get<string>('SEPOLIA_RPC_URL') ||
             'https://ethereum-sepolia-rpc.publicnode.com';
-        const privateKey = this.configService.get<string>('PRIVATE_KEY');
+        const wsUrl = this.configService.get<string>('SEPOLIA_WS_URL');
+        const privateKey = this.configService.get<string>('PRIVATE_KEY') || this.configService.get<string>('DEPLOYER_PRIVATE_KEY');
         const contractAddress = this.configService.get<string>('CONTRACT_ADDRESS');
 
         if (!privateKey || !contractAddress) {
             throw new Error('Missing required blockchain configuration');
         }
 
-        // Initialize provider
-        this.provider = new ethers.JsonRpcProvider(rpcUrl);
+        // Initialize provider - prefer WebSocket for event listening
+        if (wsUrl && wsUrl.startsWith('ws')) {
+            this.logger.log('Using WebSocket provider for better event handling');
+            this.provider = new ethers.WebSocketProvider(wsUrl);
+            this.isWebSocketProvider = true;
+
+            // Add WebSocket error handling
+            this.provider.on('error', (error) => {
+                this.logger.error('WebSocket provider error:', error);
+                this.handleConnectionError(error);
+            });
+
+            // WebSocket providers handle reconnection automatically in ethers v6
+        } else {
+            this.logger.log('Using HTTP provider (consider using WebSocket for better event handling)');
+            this.provider = new ethers.JsonRpcProvider(rpcUrl);
+            this.isWebSocketProvider = false;
+        }
 
         // Initialize signer
         this.signer = new ethers.Wallet(privateKey, this.provider);
@@ -81,8 +112,13 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
         this.isInitialized = true;
         this.logger.log(`✅ Blockchain initialized on network: ${await this.provider.getNetwork()}`);
 
-        // Start listening for events
-        await this.startEventListening();
+        // Start listening for events (if not disabled)
+        const skipEventListening = this.configService.get<boolean>('SKIP_BLOCKCHAIN_EVENTS', false);
+        if (!skipEventListening) {
+            await this.startEventListening();
+        } else {
+            this.logger.warn('⚠️ Blockchain event listening is disabled via configuration');
+        }
 
     } catch (error) {
             this.logger.error('❌ Failed to initialize blockchain:', error);
@@ -241,6 +277,14 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
 
     } catch (error) {
         this.logger.error('Failed to record supply chain data:', error);
+
+        // Check if it's a filter-related error
+        if (error.message && error.message.includes('filter not found')) {
+            this.logger.warn('Filter not found error detected. This is usually temporary and can be ignored.');
+            // You might want to retry or handle this specific case differently
+            throw new Error('Blockchain connection issue - please try again');
+        }
+
         throw error;
         }
     }
@@ -561,44 +605,69 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     private async startEventListening(): Promise<void> {
         if (!this.isInitialized) return;
 
-        this.logger.log('Starting blockchain event listening...');
+        try {
+            this.logger.log('Starting blockchain event listening...');
 
-        this.contract.on('ConservationRecordCreated', async (recordId, samplingId, researcher, dataHash, timestamp, event) => {
-            this.logger.log(`🌊 Conservation record created: ${samplingId}`);
+            // Add error handling for event listeners
+            this.contract.on('ConservationRecordCreated', async (recordId, samplingId, researcher, dataHash, timestamp, event) => {
+                try {
+                    this.logger.log(`🌊 Conservation record created: ${samplingId}`);
 
-            // Update database with blockchain confirmation
-            await this.prismaService.conservationRecord.updateMany({
-                where: { samplingId },
-                data: {
-                    blockchainHash: event.transactionHash,
-                    status: 'VERIFIED'
+                    // Update database with blockchain confirmation
+                    await this.prismaService.conservationRecord.updateMany({
+                        where: { samplingId },
+                        data: {
+                            blockchainHash: event.transactionHash,
+                            status: 'VERIFIED'
+                        }
+                    });
+                } catch (error) {
+                    this.logger.error(`Error handling ConservationRecordCreated event:`, error);
                 }
             });
-        });
 
-        this.contract.on('SupplyChainRecordCreated', async (recordId, productId, creator, dataHash, initialStage, timestamp, event) => {
-            this.logger.log(`🔗 Supply chain record created: ${productId}`);
+            this.contract.on('SupplyChainRecordCreated', async (recordId, productId, creator, dataHash, initialStage, timestamp, event) => {
+                try {
+                    this.logger.log(`🔗 Supply chain record created: ${productId}`);
 
-            await this.prismaService.supplyChainRecord.updateMany({
-                where: { productId },
-                data: {
-                    blockchainHash: event.transactionHash
+                    await this.prismaService.supplyChainRecord.updateMany({
+                        where: { productId },
+                        data: {
+                            blockchainHash: event.transactionHash
+                        }
+                    });
+                } catch (error) {
+                    this.logger.error(`Error handling SupplyChainRecordCreated event:`, error);
                 }
             });
-        });
 
-        this.contract.on('SupplyChainStageUpdated', async (recordId, productId, updatedBy, newStage, location, timestamp, event) => {
-            this.logger.log(`📦 Supply chain stage updated: ${productId} -> ${newStage}`);
+            this.contract.on('SupplyChainStageUpdated', async (recordId, productId, updatedBy, newStage, location, timestamp, event) => {
+                try {
+                    this.logger.log(`📦 Supply chain stage updated: ${productId} -> ${newStage}`);
 
-            // Since SupplyChainStageHistory doesn't have blockchainHash field,
-            // we'll update the main supply chain record instead
-            await this.prismaService.supplyChainRecord.updateMany({
-                where: { productId },
-                data: {
-                    blockchainHash: event.transactionHash
+                    // Since SupplyChainStageHistory doesn't have blockchainHash field,
+                    // we'll update the main supply chain record instead
+                    await this.prismaService.supplyChainRecord.updateMany({
+                        where: { productId },
+                        data: {
+                            blockchainHash: event.transactionHash
+                        }
+                    });
+                } catch (error) {
+                    this.logger.error(`Error handling SupplyChainStageUpdated event:`, error);
                 }
             });
-        });
+
+            // Add provider error handling
+            this.provider.on('error', (error) => {
+                this.logger.error('Provider error:', error);
+                // Don't restart automatically to avoid infinite loops
+                // Could implement exponential backoff retry logic here
+            });
+
+        } catch (error) {
+            this.logger.error('Error setting up event listeners:', error);
+        }
     }
 
     private async stopEventListening(): Promise<void> {
@@ -611,6 +680,39 @@ export class BlockchainService implements OnModuleInit, OnModuleDestroy {
     private ensureInitialized(): void {
         if (!this.isInitialized) {
             throw new Error('Blockchain service not initialized');
+        }
+    }
+
+    // ===== CONNECTION RECOVERY =====
+
+    private async handleConnectionError(error: any): Promise<void> {
+        this.logger.error('Blockchain connection error detected:', error);
+
+        if (this.isWebSocketProvider) {
+            // WebSocket providers in ethers v6 handle reconnection automatically
+            this.logger.warn('WebSocket connection error - ethers will handle reconnection automatically');
+        } else if (error.message && error.message.includes('filter not found')) {
+            this.logger.warn('Filter error detected - attempting to restart event listeners');
+            try {
+                await this.stopEventListening();
+                setTimeout(async () => {
+                    await this.startEventListening();
+                }, 5000); // Wait 5 seconds before restarting
+            } catch (restartError) {
+                this.logger.error('Failed to restart event listeners:', restartError);
+            }
+        }
+    }
+
+    async testConnection(): Promise<boolean> {
+        try {
+            if (!this.isInitialized) return false;
+
+            await this.provider.getBlockNumber();
+            return true;
+        } catch (error) {
+            this.logger.error('Blockchain connection test failed:', error);
+            return false;
         }
     }
 
