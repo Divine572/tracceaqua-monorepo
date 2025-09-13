@@ -253,39 +253,39 @@ export class RoleApplicationsController {
         return this.roleApplicationsService.getApplicationStats();
     }
 
-    /**
-     * Mark application as under review (Admin only)
-     */
-    @Put(':id/mark-under-review')
-    @UseGuards(AdminGuard)
-    @Roles(UserRole.ADMIN)
-    @ApiOperation({
-        summary: 'Mark application as under review (Admin)',
-        description: 'Mark an application as currently being reviewed (Admin only)'
-    })
-    @ApiParam({ name: 'id', description: 'Application ID' })
-    @ApiResponse({
-        status: 200,
-        description: 'Application marked as under review',
-        type: RoleApplicationResponseDto
-    })
-    @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
-    @ApiResponse({ status: 404, description: 'Application not found' })
-    async markUnderReview(
-        @Param('id', ParseUUIDPipe) applicationId: string,
-        @Req() req: any
-    ): Promise<RoleApplicationResponseDto> {
-        const adminId = req.user.id;
+    // /**
+    //  * Mark application as under review (Admin only)
+    //  */
+    // @Put(':id/mark-under-review')
+    // @UseGuards(AdminGuard)
+    // @Roles(UserRole.ADMIN)
+    // @ApiOperation({
+    //     summary: 'Mark application as under review (Admin)',
+    //     description: 'Mark an application as currently being reviewed (Admin only)'
+    // })
+    // @ApiParam({ name: 'id', description: 'Application ID' })
+    // @ApiResponse({
+    //     status: 200,
+    //     description: 'Application marked as under review',
+    //     type: RoleApplicationResponseDto
+    // })
+    // @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+    // @ApiResponse({ status: 404, description: 'Application not found' })
+    // async markUnderReview(
+    //     @Param('id', ParseUUIDPipe) applicationId: string,
+    //     @Req() req: any
+    // ): Promise<RoleApplicationResponseDto> {
+    //     const adminId = req.user.id;
 
-        // This is a simple status update - we can handle it in the controller
-        const application = await this.roleApplicationsService.getApplicationById(applicationId);
+    //     // This is a simple status update - we can handle it in the controller
+    //     const application = await this.roleApplicationsService.getApplicationById(applicationId);
 
-        if (!application) {
-            throw new Error('Application not found');
-        }
+    //     if (!application) {
+    //         throw new Error('Application not found');
+    //     }
 
-        // Update status to PENDING
-        // Note: You would implement this method in the service
-        return application; // Placeholder - implement the actual update logic
-    }
+    //     // Update status to PENDING
+    //     // Note: You would implement this method in the service
+    //     return application; // Placeholder - implement the actual update logic
+    // }
 }
