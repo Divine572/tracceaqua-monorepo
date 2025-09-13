@@ -86,6 +86,31 @@ export class SupplyChainController {
         return this.supplyChainService.createSupplyChainRecord(req.user.id, createDto, files);
     }
 
+    @Get()
+    @ApiOperation({
+        summary: 'Get all supply chain records',
+        description: 'Retrieve all supply chain records with pagination and filtering options',
+    })
+    @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
+    @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 10)' })
+    @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'COMPLETED', 'CANCELLED'], description: 'Filter by status' })
+    @ApiQuery({ name: 'stage', required: false, enum: SupplyChainStage, description: 'Filter by current stage' })
+    @ApiQuery({ name: 'sourceType', required: false, enum: SourceType, description: 'Filter by source type' })
+    @ApiQuery({ name: 'species', required: false, type: String, description: 'Filter by species name' })
+    @ApiQuery({ name: 'search', required: false, type: String, description: 'Search in product ID, name, species, or batch ID' })
+    @ApiQuery({ name: 'creatorId', required: false, type: String, description: 'Filter by creator user ID' })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Supply chain records retrieved successfully',
+        type: PaginatedSupplyChainResponseDto,
+    })
+    async getSupplyChainRecords(
+        @Request() req,
+        @Query() query: GetSupplyChainRecordsDto,
+    ): Promise<PaginatedSupplyChainResponseDto> {
+        return this.supplyChainService.getSupplyChainRecords(req.user.id, query);
+    }
+
     @Get(':productId')
     @ApiOperation({
         summary: 'Get supply chain record by product ID',
