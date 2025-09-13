@@ -3,36 +3,39 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Logger } from '@nestjs/common';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
+
 import compression from 'compression';
 import { AppModule } from './app.module';
 
+
+
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
+  const logger = new Logger('TracceAqua-Backend');
 
   try {
+    // Create NestJS application
     const app = await NestFactory.create(AppModule, {
-      logger: ['error', 'warn', 'log', 'debug', 'verbose'],
-      cors: true,
+      logger: process.env.NODE_ENV === 'production'
+        ? ['error', 'warn', 'log']
+        : ['error', 'warn', 'log', 'debug', 'verbose'],
     });
 
+    // Get configuration service
     const configService = app.get(ConfigService);
-    const port = configService.get('app.port', 3001);
-    const environment = configService.get('app.nodeEnv', 'development');
+    const port = configService.get<number>('PORT', 3001);
+    const environment = configService.get<string>('NODE_ENV', 'development');
+    const corsOrigin = configService.get<string>('CORS_ORIGIN', 'http://localhost:3000');
 
     // Security middleware
     app.use(helmet({
       crossOriginEmbedderPolicy: false,
       contentSecurityPolicy: {
         directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
-          scriptSrc: ["'self'", 'https:'],
-          imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
-          connectSrc: ["'self'", 'https:', 'wss:'],
-          fontSrc: ["'self'", 'https:', 'data:'],
-          objectSrc: ["'none'"],
-          mediaSrc: ["'self'", 'https:', 'blob:'],
-          frameSrc: ["'none'"],
+          imgSrc: [`'self'`, 'data:', 'https:'],
+          scriptSrc: [`'self'`],
+          manifestSrc: [`'self'`],
+          frameSrc: [`'self'`],
         },
       },
     }));
@@ -40,22 +43,13 @@ async function bootstrap() {
     // Compression middleware
     app.use(compression());
 
-    // Global prefix for API routes
-    app.setGlobalPrefix('api', {
-      exclude: ['/health', '/', '/docs'],
-    });
+    // Body parsing middleware with increased limits for file uploads
+    app.use(json({ limit: '50mb' }));
+    app.use(urlencoded({ extended: true, limit: '50mb' }));
 
     // CORS configuration
-    const corsOrigins = [
-      'http://localhost:3000',
-      'https://tracceaqua.vercel.app',
-      configService.get('app.corsOrigin'),
-      configService.get('app.frontendUrl'),
-    ].filter(Boolean);
-
     app.enableCors({
-      origin: corsOrigins,
-      credentials: true,
+      origin: environment === 'production' ? corsOrigin : true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
         'Origin',
@@ -63,77 +57,52 @@ async function bootstrap() {
         'Content-Type',
         'Accept',
         'Authorization',
-        'Cache-Control',
-        'X-API-Key'
+        'X-Api-Key',
+        'X-Wallet-Address'
       ],
-      exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
+      credentials: true,
     });
+
+
+    // API prefix
+    app.setGlobalPrefix('api/v1');
 
     // Swagger documentation (only in development and staging)
     if (environment !== 'production') {
       const config = new DocumentBuilder()
         .setTitle('TracceAqua API')
-        .setDescription(`
-          # TracceAqua - Blockchain Seafood Traceability System
-          
-          ## Overview
-          TracceAqua provides end-to-end traceability for seafood products using blockchain technology.
-          
-          ## Authentication
-          Most endpoints require JWT authentication. Include the token in the Authorization header:
-          \`Authorization: Bearer <your-jwt-token>\`
-          
-          ## User Roles
-          - **ADMIN**: Full system access
-          - **RESEARCHER**: Conservation data management
-          - **FARMER**: Aquaculture operations
-          - **FISHERMAN**: Wild capture operations  
-          - **PROCESSOR**: Processing operations
-          - **TRADER**: Distribution operations
-          - **RETAILER**: Retail operations
-          - **CONSUMER**: Product tracing (default role)
-          
-          ## Rate Limiting
-          - Short: 5-10 requests per second
-          - Medium: 50-100 requests per minute
-          - Long: 200-1000 requests per hour
-        `)
-        .setVersion('1.0.0')
-        .addServer('http://localhost:3001', 'Local Development')
-        .addServer('https://api.tracceaqua.com', 'Production')
-        .addBearerAuth(
-          {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
-            name: 'JWT',
-            description: 'Enter JWT token',
-            in: 'header',
-          },
-          'JWT-auth',
-        )
-        .addTag('Authentication', 'User authentication and authorization')
-        .addTag('Admin', 'Admin management endpoints (Admin only)')
-        .addTag('Conservation', 'Marine conservation data management')
-        .addTag('Supply Chain', 'Product traceability and supply chain tracking')
-        .addTag('Files', 'File upload and IPFS integration')
-        .addTag('Blockchain', 'Blockchain interaction and monitoring')
-        .addTag('Role Applications', 'Professional role application system')
+        .setDescription('Blockchain Seafood Traceability System API')
+        .setVersion('1.0')
+        .addBearerAuth({
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Enter JWT token',
+          in: 'header',
+        })
+        .addTag('authentication', 'User authentication and wallet connection')
+        .addTag('users', 'User management and profiles')
+        .addTag('conservation', 'Conservation data and sampling')
+        .addTag('supply-chain', 'Supply chain tracking and traceability')
+        .addTag('files', 'File upload and IPFS integration')
+        .addTag('admin', 'Admin management and user roles')
+        .addTag('blockchain', 'Blockchain integration and smart contracts')
+        .addTag('qr-codes', 'QR code generation and tracking')
         .build();
 
-      const document = SwaggerModule.createDocument(app, config);
+      const document = SwaggerModule.createDocument(app, config, {
+        operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
+      });
+
       SwaggerModule.setup('docs', app, document, {
         customSiteTitle: 'TracceAqua API Documentation',
-        customCssUrl: 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css',
-        customJs: [
-          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.min.js',
-          'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.min.js',
-        ],
+        customfavIcon: '/favicon.ico',
+        customCssUrl: '/swagger-custom.css',
         swaggerOptions: {
           persistAuthorization: true,
           displayRequestDuration: true,
           filter: true,
-          showExtensions: true,
           showCommonExtensions: true,
         },
       });
@@ -150,22 +119,73 @@ async function bootstrap() {
         environment,
         version: '1.0.0',
         services: {
-          database: 'connected', // Would check actual DB connection
-          blockchain: 'connected', // Would check actual blockchain connection
-          ipfs: 'connected', // Would check actual IPFS connection
+          database: 'connected',
+          blockchain: 'connected',
+          ipfs: 'connected',
         }
       });
     });
 
+    // Readiness check for Railway
+    app.getHttpAdapter().get('/ready', (req, res) => {
+      res.status(200).json({
+        status: 'ready',
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Liveness check for Railway
+    app.getHttpAdapter().get('/live', (req, res) => {
+      res.status(200).json({
+        status: 'alive',
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Graceful shutdown handlers
+    process.on('SIGTERM', () => {
+      logger.log('SIGTERM received, shutting down gracefully');
+      app.close().then(() => {
+        logger.log('Process terminated');
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      logger.log('SIGINT received, shutting down gracefully');
+      app.close().then(() => {
+        logger.log('Process terminated');
+        process.exit(0);
+      });
+    });
+
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught Exception:', error);
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      process.exit(1);
+    });
+
     // Start the server
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
 
     logger.log(`🚀 TracceAqua Backend Server is running on: http://localhost:${port}`);
     logger.log(`🌍 Environment: ${environment}`);
     logger.log(`📊 Health Check: http://localhost:${port}/health`);
+    logger.log(`🔗 CORS Origin: ${corsOrigin}`);
 
     if (environment !== 'production') {
       logger.log(`📖 API Docs: http://localhost:${port}/docs`);
+    }
+
+    // Log deployment info for Railway
+    if (process.env.RAILWAY_ENVIRONMENT) {
+      logger.log(`🚂 Railway Environment: ${process.env.RAILWAY_ENVIRONMENT}`);
+      logger.log(`🔧 Railway Service: ${process.env.RAILWAY_SERVICE_NAME || 'tracceaqua-backend'}`);
     }
 
   } catch (error) {
