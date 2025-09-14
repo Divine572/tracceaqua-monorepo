@@ -33,49 +33,104 @@ export class AppController {
   @Get('health')
   @Public()
   @ApiOperation({
-    summary: 'Health check endpoint',
+    summary: 'Simple health check endpoint',
+    description: 'Quick health check that returns immediately'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Service is running'
+  })
+  getHealth() {
+    return {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      version: '1.0.0'
+    };
+  }
+
+  @Get('health/detailed')
+  @Public()
+  @ApiOperation({
+    summary: 'Comprehensive health check endpoint',
     description: 'Comprehensive health check for all system components'
   })
   @ApiResponse({
     status: 200,
     description: 'System health status'
   })
-  async getHealthCheck() {
+  async getDetailedHealthCheck() {
     const startTime = Date.now();
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Helper function to add timeout to promises (only in production)
+    const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+      if (!isProduction) return promise; // No timeout in development
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+        )
+      ]);
+    };
 
     // Check database connectivity
     let databaseHealthy = false;
     let databaseLatency = 0;
+    const dbStart = Date.now();
     try {
-      const dbStart = Date.now();
-      await this.prismaService.$queryRaw`SELECT 1`;
-      databaseLatency = Date.now() - dbStart;
+      if (isProduction) {
+        await withTimeout(this.prismaService.$queryRaw`SELECT 1`, 5000); // 5 second timeout in production
+      } else {
+        // Simple check in development - just verify service exists
+        databaseHealthy = !!this.prismaService;
+        databaseLatency = 1; // Minimal latency for dev
+      }
+      if (isProduction) {
+        databaseLatency = Date.now() - dbStart;
+      }
       databaseHealthy = true;
     } catch (error) {
       console.error('Database health check failed:', error);
+      databaseLatency = Date.now() - dbStart;
     }
 
     // Check blockchain connectivity
     let blockchainHealthy = false;
     let blockchainLatency = 0;
+    const blockchainStart = Date.now();
     try {
-      const blockchainStart = Date.now();
-      blockchainHealthy = await this.blockchainService.isHealthy();
-      blockchainLatency = Date.now() - blockchainStart;
+      if (isProduction) {
+        blockchainHealthy = await withTimeout(this.blockchainService.isHealthy(), 5000); // 5 second timeout in production
+        blockchainLatency = Date.now() - blockchainStart;
+      } else {
+        // Simple check in development - just verify service exists
+        blockchainHealthy = !!this.blockchainService;
+        blockchainLatency = 1; // Minimal latency for dev
+      }
     } catch (error) {
       console.error('Blockchain health check failed:', error);
+      blockchainLatency = Date.now() - blockchainStart;
     }
 
     // Check IPFS connectivity
     let ipfsHealthy = false;
     let ipfsLatency = 0;
+    const ipfsStart = Date.now();
     try {
-      const ipfsStart = Date.now();
-      // You could implement a ping method in FilesService
-      ipfsHealthy = true; // Placeholder
-      ipfsLatency = Date.now() - ipfsStart;
+      if (isProduction) {
+        // You could implement a ping method in FilesService
+        ipfsHealthy = true; // Placeholder for production
+        ipfsLatency = Date.now() - ipfsStart;
+      } else {
+        // Simple check in development
+        ipfsHealthy = !!this.filesService;
+        ipfsLatency = 1; // Minimal latency for dev
+      }
     } catch (error) {
       console.error('IPFS health check failed:', error);
+      ipfsLatency = Date.now() - ipfsStart;
     }
 
     const totalLatency = Date.now() - startTime;

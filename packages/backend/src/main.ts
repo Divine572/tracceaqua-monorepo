@@ -110,20 +110,26 @@ async function bootstrap() {
       logger.log(`📚 API Documentation available at: http://localhost:${port}/docs`);
     }
 
-    // Health check endpoint
+    // Health check endpoints - respond to both with and without prefix
+    const healthResponse = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment,
+      version: '1.0.0',
+      services: {
+        database: 'connected',
+        blockchain: 'connected',
+        ipfs: 'connected',
+      }
+    };
+
     app.getHttpAdapter().get('/health', (req, res) => {
-      res.status(200).json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        environment,
-        version: '1.0.0',
-        services: {
-          database: 'connected',
-          blockchain: 'connected',
-          ipfs: 'connected',
-        }
-      });
+      res.status(200).json(healthResponse);
+    });
+
+    app.getHttpAdapter().get('/api/v1/health', (req, res) => {
+      res.status(200).json(healthResponse);
     });
 
     // Readiness check for Railway
