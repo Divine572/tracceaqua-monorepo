@@ -176,11 +176,11 @@ export function withAuthGuard<P extends object>(
 
 // Hook to check if user is authenticated
 export function useAuthGuard() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   
   return {
     isAuthenticated,
-    isLoading,
+    // isLoading,
     user,
     canAccess: isAuthenticated && user?.status === 'ACTIVE',
     isActive: user?.status === 'ACTIVE',

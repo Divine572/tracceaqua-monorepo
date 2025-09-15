@@ -169,7 +169,7 @@ export default function Home() {
 
           <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground">
             Welcome to{" "}
-            <span className="tracce-gradient bg-clip-text text-transparent">
+            <span className="bg-clip-text">
               TracceAqua
             </span>
           </h1>

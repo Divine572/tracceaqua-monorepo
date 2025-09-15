@@ -262,7 +262,7 @@ export function AnalyticsDashboard() {
                 <CardDescription>Current distribution across supply chain stages</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                {/* <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
                       data={analytics.batchesByStage}
@@ -280,7 +280,7 @@ export function AnalyticsDashboard() {
                     </Pie>
                     <Tooltip />
                   </PieChart>
-                </ResponsiveContainer>
+                </ResponsiveContainer> */}
               </CardContent>
             </Card>
 

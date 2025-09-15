@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '../ThemeToggle'
-import { ConnectWalletModal } from '../auth/ConnectWalletModal'
+// import { ConnectWalletModal } from '../auth/ConnectWalletModal'
 import { UserDropdown } from '../layout/UserDropdown'
 import { MobileMenu } from '../layout/MobileMenu'
 // import { NotificationCenter } from '@/components/notifications/notification-center'
@@ -95,10 +95,10 @@ export function Header() {
       </div>
 
       {/* Connect Wallet Modal */}
-      <ConnectWalletModal
+      {/* <ConnectWalletModal
         isOpen={showConnectModal}
         onClose={() => setShowConnectModal(false)}
-      />
+      /> */}
 
       {/* Mobile Menu */}
       <MobileMenu />

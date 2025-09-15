@@ -12,7 +12,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
-import { WalletConnectButton } from "../auth/WalletConnectButton";
+// import { WalletConnectButton } from "../auth/WalletConnectButton";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { DynamicWidget } from "@dynamic-labs/sdk-react-core";

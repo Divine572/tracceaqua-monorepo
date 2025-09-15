@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ThemeToggle } from "../ThemeToggle";
-import { ConnectWalletModal } from "../auth/ConnectWalletModal";
+// import { ConnectWalletModal } from "../auth/ConnectWalletModal";
 import { UserDropdown } from "./UserDropdown";
 import { MobileMenu } from "./MobileMenu";
 import { Menu, QrCode, Scan } from "lucide-react";
@@ -109,10 +109,10 @@ export function Header() {
       </div>
 
       {/* Connect Wallet Modal */}
-      <ConnectWalletModal
+      {/* <ConnectWalletModal
         isOpen={showConnectModal}
         onClose={() => setShowConnectModal(false)}
-      />
+      /> */}
 
       {/* Mobile Menu */}
       <MobileMenu />
