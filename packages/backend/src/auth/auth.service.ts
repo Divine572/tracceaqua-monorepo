@@ -341,10 +341,10 @@ export class AuthService {
             throw new InternalServerErrorException('Failed to create or retrieve user');
         }
 
-        // Check if user is active
-        if (user.status !== UserStatus.ACTIVE) {
-            throw new UnauthorizedException('User account is not active');
-        }
+        // // Check if user is active
+        // if (user.status !== UserStatus.ACTIVE) {
+        //     throw new UnauthorizedException('User account is not active');
+        // }
 
         // Generate JWT token
         const payload: JwtPayload = {

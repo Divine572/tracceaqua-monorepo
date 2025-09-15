@@ -156,7 +156,7 @@ ENV_VARS=$(railway variables 2>/dev/null || echo "")
 
 # List of required environment variables
 REQUIRED_VARS=(
-    "DATABASE_URL"
+    "DATABASE_URI"
     "JWT_SECRET"
     "PINATA_JWT"
     "CONTRACT_ADDRESS"
@@ -172,13 +172,13 @@ for var in "${REQUIRED_VARS[@]}"; do
     fi
 done
 
-# Run database migrations (only if DATABASE_URL is available)
-if echo "$ENV_VARS" | grep -q "DATABASE_URL"; then
+# Run database migrations (only if DATABASE_URI is available)
+if echo "$ENV_VARS" | grep -q "DATABASE_URI"; then
     print_info "Running database migrations..."
     railway run npx prisma migrate deploy
     print_status "Database migrations completed"
 else
-    print_warning "DATABASE_URL not set, skipping migrations"
+    print_warning "DATABASE_URI not set, skipping migrations"
     print_warning "Run 'railway run npx prisma migrate deploy' after setting up the database"
 fi
 
