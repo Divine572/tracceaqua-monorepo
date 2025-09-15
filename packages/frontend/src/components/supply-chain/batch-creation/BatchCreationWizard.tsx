@@ -121,7 +121,7 @@ export function BatchCreationWizard({
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
-  const router = useRouter()
+  const router = useRouter();
 
   const methods = useForm<BatchCreationData>({
     resolver: zodResolver(batchCreationSchema) as any,
@@ -131,8 +131,6 @@ export function BatchCreationWizard({
       speciesName: "",
       productName: "",
       productDescription: "",
-      currentStage: "",
-      status: "active",
       isPublic: true,
       hatcheryData: {},
       growOutData: {},
@@ -141,17 +139,19 @@ export function BatchCreationWizard({
       processingData: {},
       storageData: {},
       transportData: {},
+      location: "",
+      notes: "",
     },
     mode: "onChange",
   });
 
   const onSubmit = (data: BatchCreationData) => {
-  console.log("✅ Submitted data:", data)
-}
+    console.log("✅ Submitted data:", data);
+  };
 
-const onError = (errors: any) => {
-  console.log("❌ Validation errors:", errors)
-}
+  const onError = (errors: any) => {
+    console.log("❌ Validation errors:", errors);
+  };
 
   const { handleSubmit, trigger, getValues } = methods;
 
@@ -175,151 +175,54 @@ const onError = (errors: any) => {
     setIsLoading(true);
     try {
       onSave?.(data);
-      toast.success("Your batch has been saved as a draft.")
+      toast.success("Your batch has been saved as a draft.");
     } catch (error) {
-      toast.error("Failed to save draft. Please try again.")
+      toast.error("Failed to save draft. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // const onFormSubmit = async (data: BatchCreationData) => {
-  //   console.log("Form submitted raw:", data);
-  //   setIsLoading(true);
-  //   try {
-  //     // Clean up the data - remove empty optional objects
-  //     const cleanData = {
-  //       ...data,
-  //       hatcheryData:
-  //         Object.keys(data.hatcheryData || {}).length > 0
-  //           ? data.hatcheryData
-  //           : undefined,
-  //       growOutData:
-  //         Object.keys(data.growOutData || {}).length > 0
-  //           ? data.growOutData
-  //           : undefined,
-  //       fishingData:
-  //         Object.keys(data.fishingData || {}).length > 0
-  //           ? data.fishingData
-  //           : undefined,
-  //       harvestData:
-  //         Object.keys(data.harvestData || {}).length > 0
-  //           ? data.harvestData
-  //           : undefined,
-  //       processingData:
-  //         Object.keys(data.processingData || {}).length > 0
-  //           ? data.processingData
-  //           : undefined,
-  //       storageData:
-  //         Object.keys(data.storageData || {}).length > 0
-  //           ? data.storageData
-  //           : undefined,
-  //       transportData:
-  //         Object.keys(data.transportData || {}).length > 0
-  //           ? data.transportData
-  //           : undefined,
-  //     };
-
-  //     console.log(cleanData);
-
-  //     const response = await fetch("/api/supply-chain/create-batch", {
-  //       method: "POST",
-  //       body: JSON.stringify(cleanData),
-  //       headers: {
-  //         "Content-Type": "application/json"
-  //       }
-  //     })
-
-  //     if(!response.ok) {
-  //       throw new Error("Failed to create batch")
-  //     }
-
-  //     const result = await response.json()
-  //     console.log(result)
-
-  //     toast.success("Your supply chain batch has been created.")
-  //     router.push("/dashboard/supply-chain")
-  //   } catch (error) {
-  //     console.error("Form submit failed:", error);
-  //     toast.error("Failed to create batch. Please try again.")
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const onFormSubmit = async (data: BatchCreationData) => {
-  console.log("Form submitted raw:", data);
+    console.log("Form submitted raw:", data);
 
-  setIsLoading(true);
-  try {
-    // Safely clean nested optional objects
-    const cleanData = {
-      ...data,
-      hatcheryData:
-        data.hatcheryData && Object.keys(data.hatcheryData ?? {}).length > 0
-          ? data.hatcheryData
-          : undefined,
-      growOutData:
-        data.growOutData && Object.keys(data.growOutData ?? {}).length > 0
-          ? data.growOutData
-          : undefined,
-      fishingData:
-        data.fishingData && Object.keys(data.fishingData ?? {}).length > 0
-          ? data.fishingData
-          : undefined,
-      harvestData:
-        data.harvestData && Object.keys(data.harvestData ?? {}).length > 0
-          ? data.harvestData
-          : undefined,
-      processingData:
-        data.processingData && Object.keys(data.processingData ?? {}).length > 0
-          ? data.processingData
-          : undefined,
-      storageData:
-        data.storageData && Object.keys(data.storageData ?? {}).length > 0
-          ? data.storageData
-          : undefined,
-      transportData:
-        data.transportData && Object.keys(data.transportData ?? {}).length > 0
-          ? data.transportData
-          : undefined,
-    };
+    setIsLoading(true);
+    try {
+      // Safely clean nested optional objects
 
-    console.log("Cleaned form data:", data);
+      console.log("Cleaned form data:", data);
 
-    const response = await fetch("/api/supply-chain/create-batch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+      const response = await fetch("/api/supply-chain/create-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      // Try to parse backend error details if available
-      let errorMessage = `Failed to create batch. Status: ${response.status}`;
-      try {
-        const errJson = await response.json();
-        console.error("API Error response:", errJson);
-        if (errJson.message) errorMessage = errJson.message;
-      } catch {
-        console.error("API returned non-JSON error");
+      if (!response.ok) {
+        // Try to parse backend error details if available
+        let errorMessage = `Failed to create batch. Status: ${response.status}`;
+        try {
+          const errJson = await response.json();
+          console.error("API Error response:", errJson);
+          if (errJson.message) errorMessage = errJson.message;
+        } catch {
+          console.error("API returned non-JSON error");
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
+
+      const result = await response.json();
+      console.log("Batch created successfully:", result);
+
+      toast.success("Your supply chain batch has been created.");
+      router.push("/dashboard/supply-chain");
+    } catch (error: any) {
+      console.error("Form submit failed:", error);
+      toast.error("Failed to create batch. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    const result = await response.json();
-    console.log("Batch created successfully:", result);
-
-    toast.success("Your supply chain batch has been created.");
-    router.push("/dashboard/supply-chain");
-  } catch (error: any) {
-    console.error("Form submit failed:", error);
-    toast.error(
-      "Failed to create batch. Please try again."
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const renderStep = () => {
     switch (currentStep) {
@@ -367,12 +270,12 @@ const onError = (errors: any) => {
               <Save className="h-4 w-4 mr-2" />
               Save Draft
             </Button>
-          </div> 
+          </div>
 
-           <Progress value={progress} className="w-full" />
+          <Progress value={progress} className="w-full" />
 
           {/* Step Navigation */}
-           <div className="flex items-center justify-between mt-4 overflow-x-auto">
+          <div className="flex items-center justify-between mt-4 overflow-x-auto">
             {steps.map((step) => {
               const StepIcon = step.icon;
               const isActive = step.id === currentStep;
@@ -409,14 +312,13 @@ const onError = (errors: any) => {
       </Card>
 
       {/* Form Content */}
-       <FormProvider {...methods}>
-         <form
-          onSubmit={handleSubmit(onSubmit, onError)}
-        > 
+      <FormProvider {...methods}>
+        {/* Prevent auto-submit */}
+        <form onSubmit={(e) => e.preventDefault()}>
           {renderStep()}
 
           {/* Navigation Buttons */}
-           <Card>
+          <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between">
                 <Button
@@ -436,7 +338,11 @@ const onError = (errors: any) => {
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   ) : (
-                    <Button type="submit" disabled={isLoading}>
+                    <Button
+                      type="button"
+                      onClick={handleSubmit(onFormSubmit, onError)}
+                      disabled={isLoading}
+                    >
                       {isLoading ? "Creating Batch..." : "Create Batch"}
                     </Button>
                   )}
@@ -444,8 +350,8 @@ const onError = (errors: any) => {
               </div>
             </CardContent>
           </Card>
-        </form> 
-       </FormProvider>
+        </form>
+      </FormProvider>
     </div>
   );
 }

@@ -31,10 +31,10 @@ export default function BasicInfoStep() {
               className="w-full p-2 border rounded-md"
             >
               <option value="">Select source type</option>
-              <option value="hatchery">Hatchery</option>
-              <option value="wild-capture">Wild Capture</option>
-              <option value="aquaculture">Aquaculture</option>
-              <option value="imported">Imported</option>
+              <option value="FARMED">Farmed</option>
+              <option value="WILD_CAPTURE">Wild Capture</option>
+              {/* <option value="aquaculture">Aquaculture</option>
+              <option value="imported">Imported</option> */}
             </select>
             {errors.sourceType && <p className="text-red-500 text-sm">{errors.sourceType.message}</p>}
           </div>
@@ -58,19 +58,14 @@ export default function BasicInfoStep() {
             />
             {errors.productName && <p className="text-red-500 text-sm">{errors.productName.message}</p>}
           </div>
-          
+
           <div>
-            <label className="text-sm font-medium">Current Stage</label>
-            <select {...register("currentStage")} className="w-full p-2 border rounded-md">
-              <option value="">Select current stage</option>
-              <option value="hatchery">Hatchery</option>
-              <option value="grow-out">Grow-Out</option>
-              <option value="fishing">Fishing</option>
-              <option value="harvest">Harvest</option>
-              <option value="processing">Processing</option>
-              <option value="storage">Storage</option>
-              <option value="transport">Transport</option>
-            </select>
+            <label className="text-sm font-medium">Location</label>
+            <input 
+              {...register("location")} 
+              className="w-full p-2 border rounded-md" 
+              placeholder="e.g., Fresh Catfish"
+            />
           </div>
         </div>
         
@@ -86,15 +81,14 @@ export default function BasicInfoStep() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium">Status</label>
-            <select {...register("status")} className="w-full p-2 border rounded-md">
-              <option value="">Select status</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
+          <label className="text-sm font-medium">Notes</label>
+          <textarea 
+            {...register("notes")} 
+            className="w-full p-2 border rounded-md" 
+            rows={3}
+            placeholder="Enter notes..."
+          />
+        </div>
           
           <div className="flex items-center space-x-2">
             <input 

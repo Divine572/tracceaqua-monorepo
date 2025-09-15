@@ -20,7 +20,7 @@ const CreateBatch = () => {
           ]}
         >
           <div className="container max-w-7xl mx-auto py-8 px-4">
-            <BatchCreationWizard />
+            <BatchCreationWizard2 />
           </div>
           {/* <></> */}
         </RoleGuard>
