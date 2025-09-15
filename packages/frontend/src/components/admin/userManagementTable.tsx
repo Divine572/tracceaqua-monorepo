@@ -1,7 +1,8 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import {
   Table,
   TableBody,
@@ -9,99 +10,137 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { UserRole, UserStatus, type User } from '@/lib/types'
-import { formatAddress, formatDate, getUserRoleColor } from '@/lib/utils'
-import { Search, Filter, MoreHorizontal, UserCheck, UserX } from 'lucide-react'
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { UserRole, UserStatus, type User } from "@/lib/types";
+import { formatAddress, formatDate, getUserRoleColor } from "@/lib/utils";
+import { Search, Filter, MoreHorizontal, UserCheck, UserX } from "lucide-react";
+import Cookies from "universal-cookie";
+import { useUsers } from "@/hooks/use-users";
 
 // Mock data - replace with actual API call
 const mockUsers: User[] = [
   {
-    id: '1',
-    address: '0x1234567890123456789012345678901234567890',
-    email: 'john.doe@example.com',
-    name: 'John Doe',
+    id: "1",
+    address: "0x1234567890123456789012345678901234567890",
+    email: "john.doe@example.com",
+    name: "John Doe",
     role: UserRole.CONSUMER,
     status: UserStatus.ACTIVE,
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-15'),
+    createdAt: new Date("2024-01-15"),
+    updatedAt: new Date("2024-01-15"),
   },
   {
-    id: '2',
-    address: '0x2345678901234567890123456789012345678901',
-    email: 'jane.researcher@university.edu',
-    name: 'Jane Smith',
+    id: "2",
+    address: "0x2345678901234567890123456789012345678901",
+    email: "jane.researcher@university.edu",
+    name: "Jane Smith",
     role: UserRole.RESEARCHER,
     status: UserStatus.ACTIVE,
-    createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-10'),
+    createdAt: new Date("2024-01-10"),
+    updatedAt: new Date("2024-01-10"),
   },
   {
-    id: '3',
+    id: "3",
     address: "0x2345678901234567890123456789012345678943",
-    email: 'pending.user@company.com',
-    name: 'Pending User',
+    email: "pending.user@company.com",
+    name: "Pending User",
     role: UserRole.FARMER,
     status: UserStatus.PENDING,
-    createdAt: new Date('2024-01-20'),
-    updatedAt: new Date('2024-01-20'),
+    createdAt: new Date("2024-01-20"),
+    updatedAt: new Date("2024-01-20"),
   },
-]
+];
 
 export function UserManagementTable() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ['users', searchTerm, roleFilter, statusFilter],
-    queryFn: async () => {
-      // TODO: Replace with actual API call
-      return mockUsers.filter(user => {
-        const matchesSearch = !searchTerm || 
-          user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.address?.toLowerCase().includes(searchTerm.toLowerCase())
-        
-        const matchesRole = roleFilter === 'all' || user.role === roleFilter
-        const matchesStatus = statusFilter === 'all' || user.status === statusFilter
-        
-        return matchesSearch && matchesRole && matchesStatus
-      })
-    },
-  })
+  const { users, isLoading } = useUsers({searchTerm, roleFilter, statusFilter});
+
+  const cookie = new Cookies();
+
+  const userToken = cookie.get("user-token");
+
+  // useEffect(() => {
+  //   const getUsers = async () => {
+  //     try {
+  //       const response = await axios.get("/api/admin/users", {
+  //         headers: {
+  //           Authorization: `Bearer ${userToken}`,
+  //         },
+  //       });
+  //       const data = response.data();
+  //       console.log(data);
+  //     } catch (error) {
+  //       console.error(error);
+  //     }
+  //   };
+
+  //   getUsers();
+  // });
+
+  // const { data: users = [], isLoading } = useQuery({
+  //   queryKey: ["users", searchTerm, roleFilter, statusFilter],
+  //   queryFn: async () => {
+  //     // TODO: Replace with actual API call
+  //     return mockUsers.filter((user) => {
+  //       const matchesSearch =
+  //         !searchTerm ||
+  //         user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //         user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //         user.address?.toLowerCase().includes(searchTerm.toLowerCase());
+
+  //       const matchesRole = roleFilter === "all" || user.role === roleFilter;
+  //       const matchesStatus =
+  //         statusFilter === "all" || user.status === statusFilter;
+
+  //       return matchesSearch && matchesRole && matchesStatus;
+  //     });
+  //   },
+  // });
+
+  console.log(users)
 
   const handleApproveUser = async (userId: string) => {
     // TODO: Implement user approval API call
-    console.log('Approving user:', userId)
-  }
+    console.log("Approving user:", userId);
+  };
 
   const handleSuspendUser = async (userId: string) => {
     // TODO: Implement user suspension API call
-    console.log('Suspending user:', userId)
-  }
+    console.log("Suspending user:", userId);
+  };
 
   const getStatusBadge = (status: UserStatus) => {
     const variants = {
-      [UserStatus.ACTIVE]: 'default',
-      [UserStatus.PENDING]: 'secondary',
-      [UserStatus.SUSPENDED]: 'destructive',
-      [UserStatus.REJECTED]: 'destructive',
-      [UserStatus.BANNED]: 'destructive',
-    } as const
+      [UserStatus.ACTIVE]: "default",
+      [UserStatus.PENDING]: "secondary",
+      [UserStatus.SUSPENDED]: "destructive",
+      [UserStatus.REJECTED]: "destructive",
+      [UserStatus.BANNED]: "destructive",
+    } as const;
 
-    return (
-      <Badge variant={variants[status]}>
-        {status}
-      </Badge>
-    )
-  }
+    return <Badge variant={variants[status]}>{status}</Badge>;
+  };
 
   return (
     <Card>
@@ -123,7 +162,7 @@ export function UserManagementTable() {
               className="pl-10"
             />
           </div>
-          
+
           <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filter by role" />
@@ -180,22 +219,34 @@ export function UserManagementTable() {
                 </TableRow>
               ) : (
                 users.map((user) => {
-                  const userInitials = user.name 
-                    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase()
-                    : user.email?.[0]?.toUpperCase() || '??'
+                  const userInitials =
+                    user.profile.firstName + user.profile.lastName
+                      ? user.profile.firstName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                      : user.email?.[0]?.toUpperCase() || "??";
 
                   return (
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={user.image!} alt={user.name || ''} />
-                            <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
+                            {/* <AvatarImage
+                              src={user.image!}
+                              alt={user.name || ""}
+                            /> */}
+                            <AvatarFallback className="text-xs">
+                              {userInitials}
+                            </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium">{user.name || 'Anonymous'}</div>
+                            <div className="font-medium">
+                              {user.profile.firstName || "Anonymous"}
+                            </div>
                             <div className="text-sm text-muted-foreground">
-                              {user.email || formatAddress(user.address || '')}
+                              {user.email || formatAddress(user.address || "")}
                             </div>
                           </div>
                         </div>
@@ -232,7 +283,7 @@ export function UserManagementTable() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })
               )}
             </TableBody>
@@ -240,5 +291,5 @@ export function UserManagementTable() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

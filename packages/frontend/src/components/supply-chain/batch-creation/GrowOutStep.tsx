@@ -47,7 +47,7 @@ export default function GrowOutStep() {
         <div>
           <label className="text-sm font-medium">Disease Treatments</label>
           <textarea 
-            {...register("growOutData.diseaseTreatments")} 
+            {...register("growOutData.diseaseTreatmentsString")} 
             className="w-full p-2 border rounded-md" 
             rows={2}
             placeholder="Enter treatments separated by commas"

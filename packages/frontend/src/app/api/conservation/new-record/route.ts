@@ -1,24 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
-import { UserData } from "@/lib/types";
+import { cookies } from "next/headers";
 
 // const baseUrl = "https://api.tracceaqua.com"
 
 export async function POST(req: NextRequest) {
-  const body: UserData = await req.json();
+  const body = await req.json();
+
+  const cookieStore = cookies();
+
+  const userToken = (await cookieStore).get("user-token")?.value;
 
   try {
     const response = await axios.post(
-      `${process.env.BACKEND_URL_DEV}/auth/login`,
+      `${process.env.BACKEND_URL_DEV}/conservation`,
       body,
       {
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
         },
       }
     );
 
-    if (response.status !== 200) {
+    if (response.status !== 201) {
+      console.log(response.data);
       throw new Error();
     }
 
@@ -26,7 +32,10 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       console.error("Axios error:", error.response?.data || error.message);
-      return NextResponse.json({ error: error.message }, { status: 401 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
     }
 
     console.error("Unexpected error", error);

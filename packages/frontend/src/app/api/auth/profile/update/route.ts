@@ -5,11 +5,11 @@ import { UserData } from "@/lib/types";
 // const baseUrl = "https://api.tracceaqua.com"
 
 export async function POST(req: NextRequest) {
-  const body: UserData = await req.json();
+  const body = await req.json();
 
   try {
     const response = await axios.post(
-      `${process.env.BACKEND_URL_DEV}/auth/login`,
+      `${process.env.BACKEND_URL_DEV}/auth/profile`,
       body,
       {
         headers: {
@@ -18,15 +18,14 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    if (response.status !== 200) {
-      throw new Error();
-    }
-
     return NextResponse.json({ success: true, data: response.data });
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       console.error("Axios error:", error.response?.data || error.message);
-      return NextResponse.json({ error: error.message }, { status: 401 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
     }
 
     console.error("Unexpected error", error);

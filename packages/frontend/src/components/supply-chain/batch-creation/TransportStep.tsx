@@ -1,5 +1,12 @@
 import { useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
+import {
+  FormField,
+  FormLabel,
+  FormControl,
+  FormItem,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 import {
   Card,
@@ -13,7 +20,7 @@ import { batchCreationSchema } from "@/zod/schemas/batch-creation-schema";
 type BatchCreationData = z.infer<typeof batchCreationSchema>;
 
 export default function TransportStep() {
-  const { register } = useFormContext<BatchCreationData>();
+  const { register, control } = useFormContext<BatchCreationData>();
 
   return (
     <Card>
@@ -23,56 +30,85 @@ export default function TransportStep() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Transport Method</label>
-            <input
-              {...register("transportData.transportMethod")}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
+          <FormField
+            // control={control}
+            name="transportData.transportMethod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Transport Method</FormLabel>
+                <FormControl>
+                  <Input type="text" {...field} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
-          <div>
-            <label className="text-sm font-medium">Origin Location</label>
-            <input
-              {...register("transportData.originLocation")}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
+          <FormField
+            // control={control}
+            name="transportData.originLocation"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm font-medium">
+                  Origin Location
+                </FormLabel>
+                <FormControl>
+                  <Input type="text" {...field} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
-          <div>
-            <label className="text-sm font-medium">Destination Location</label>
-            <input
-              {...register("transportData.destinationLocation")}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
+          <FormField
+            // control={control}
+            name="transportData.destinationLocation"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Destination Location</FormLabel>
+                <FormControl>
+                  <Input type="text" {...field} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
-          <div>
-            <label className="text-sm font-medium">
-              Transport Temperature (°C)
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              {...register("transportData.transportTemperature", {
-                valueAsNumber: true,
-              })}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
+          <FormField
+            control={control}
+            name="transportData.transportTemperature"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Transport Temperature (°C)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    {...field}
+                    onChange={(e) =>
+                      field.onChange(parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
-          <div>
-            <label className="text-sm font-medium">
-              Transport Duration (hours)
-            </label>
-            <input
-              type="number"
-              {...register("transportData.transportDuration", {
-                valueAsNumber: true,
-              })}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
+          <FormField
+            control={control}
+            name="transportData.transportDuration"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Transport Duration (hours)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    onChange={(e) =>
+                      field.onChange(parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
         </div>
       </CardContent>
     </Card>

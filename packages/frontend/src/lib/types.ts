@@ -83,7 +83,6 @@ export enum UserStatus {
   ACTIVE = "ACTIVE",
   SUSPENDED = "SUSPENDED",
   PENDING = "PENDING",
-  //   INACTIVE = 'INACTIVE',
   BANNED = "BANNED",
   REJECTED = "REJECTED",
 }

@@ -1,5 +1,12 @@
 import { useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
+import {
+  FormField,
+  FormLabel,
+  FormControl,
+  FormItem,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 import {
   Card,
@@ -13,7 +20,7 @@ import { batchCreationSchema } from "@/zod/schemas/batch-creation-schema";
 type BatchCreationData = z.infer<typeof batchCreationSchema>;
 
 export default function HatcheryStep() {
-  const { register } = useFormContext<BatchCreationData>();
+  const { register, control } = useFormContext<BatchCreationData>();
 
   return (
     <Card>

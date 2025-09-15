@@ -14,7 +14,6 @@ export default function AdminPage() {
               Manage users, roles, and system configuration.
             </p>
           </div>
-
           <UserManagementTable />
         </div>
       </RoleGuard>

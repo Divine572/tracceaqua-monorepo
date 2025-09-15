@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const response = await axios.post(
-      `${process.env.BACKEND_URL_DEV}/api/auth/register`,
+      `${process.env.BACKEND_URL_DEV}/auth/register`,
       body,
       {
         headers: {

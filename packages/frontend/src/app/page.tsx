@@ -18,14 +18,12 @@ import {
   Users,
   Waves,
   ChevronRight,
-  Fish,
   Microscope,
   Truck,
 } from "lucide-react";
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { toast } from "sonner";
 import useAuthStore from "@/stores/auth-store";
-import { useCookies } from "react-cookie";
 import Cookies from "universal-cookie";
 
 export default function Home() {
@@ -33,24 +31,18 @@ export default function Home() {
 
   const router = useRouter();
 
-  const { setSignature, setWalletAddress, walletAddress, email, signature } =
+  const { setSignature, email } =
     useAuthStore();
   const { setUser } = useAuthStore();
 
-  // const [,setCookie] = useCookies(["user-token"])
   const cookie = new Cookies();
 
   const message =
     "Welcome to TracceAqua! This request will not trigger a blockchain transaction...";
 
   useEffect(() => {
-    console.log(user);
-    // if (user !== undefined) return;
-
-    console.log(primaryWallet);
 
     const userToken = cookie.get("user-token");
-    console.log("userToken:", userToken);
 
     if (userToken && userToken !== "undefined" && userToken !== "null") {
       return;

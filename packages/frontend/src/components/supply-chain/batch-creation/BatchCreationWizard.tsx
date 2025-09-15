@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { v4 as uuidv4 } from "uuid";
 import {
   Card,
   CardContent,
@@ -14,7 +16,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
   ChevronLeft,
@@ -25,7 +26,6 @@ import {
   Factory,
   Truck,
   Droplets,
-  Thermometer,
   Warehouse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -115,16 +115,18 @@ interface BatchCreationWizardProps {
 
 export function BatchCreationWizard({
   onSave,
-  onSubmit,
+  // onSubmit,
 }: BatchCreationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
-  const { toast } = useToast();
+
+  const router = useRouter()
 
   const methods = useForm<BatchCreationData>({
-    resolver: zodResolver(batchCreationSchema),
+    resolver: zodResolver(batchCreationSchema) as any,
     defaultValues: {
+      productId: `BAC_${uuidv4()}`,
       sourceType: "",
       speciesName: "",
       productName: "",
@@ -132,16 +134,24 @@ export function BatchCreationWizard({
       currentStage: "",
       status: "active",
       isPublic: true,
-      hatcheryData: undefined,
-      growOutData: undefined,
-      fishingData: undefined,
-      harvestData: undefined,
-      processingData: undefined,
-      storageData: undefined,
-      transportData: undefined,
+      hatcheryData: {},
+      growOutData: {},
+      fishingData: {},
+      harvestData: {},
+      processingData: {},
+      storageData: {},
+      transportData: {},
     },
     mode: "onChange",
   });
+
+  const onSubmit = (data: BatchCreationData) => {
+  console.log("✅ Submitted data:", data)
+}
+
+const onError = (errors: any) => {
+  console.log("❌ Validation errors:", errors)
+}
 
   const { handleSubmit, trigger, getValues } = methods;
 
@@ -165,93 +175,151 @@ export function BatchCreationWizard({
     setIsLoading(true);
     try {
       onSave?.(data);
-      toast({
-        title: "Draft saved",
-        description: "Your batch has been saved as a draft.",
-      });
-      // toast()
+      toast.success("Your batch has been saved as a draft.")
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save draft. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to save draft. Please try again.")
     } finally {
       setIsLoading(false);
     }
   };
+
+  // const onFormSubmit = async (data: BatchCreationData) => {
+  //   console.log("Form submitted raw:", data);
+  //   setIsLoading(true);
+  //   try {
+  //     // Clean up the data - remove empty optional objects
+  //     const cleanData = {
+  //       ...data,
+  //       hatcheryData:
+  //         Object.keys(data.hatcheryData || {}).length > 0
+  //           ? data.hatcheryData
+  //           : undefined,
+  //       growOutData:
+  //         Object.keys(data.growOutData || {}).length > 0
+  //           ? data.growOutData
+  //           : undefined,
+  //       fishingData:
+  //         Object.keys(data.fishingData || {}).length > 0
+  //           ? data.fishingData
+  //           : undefined,
+  //       harvestData:
+  //         Object.keys(data.harvestData || {}).length > 0
+  //           ? data.harvestData
+  //           : undefined,
+  //       processingData:
+  //         Object.keys(data.processingData || {}).length > 0
+  //           ? data.processingData
+  //           : undefined,
+  //       storageData:
+  //         Object.keys(data.storageData || {}).length > 0
+  //           ? data.storageData
+  //           : undefined,
+  //       transportData:
+  //         Object.keys(data.transportData || {}).length > 0
+  //           ? data.transportData
+  //           : undefined,
+  //     };
+
+  //     console.log(cleanData);
+
+  //     const response = await fetch("/api/supply-chain/create-batch", {
+  //       method: "POST",
+  //       body: JSON.stringify(cleanData),
+  //       headers: {
+  //         "Content-Type": "application/json"
+  //       }
+  //     })
+
+  //     if(!response.ok) {
+  //       throw new Error("Failed to create batch")
+  //     }
+
+  //     const result = await response.json()
+  //     console.log(result)
+
+  //     toast.success("Your supply chain batch has been created.")
+  //     router.push("/dashboard/supply-chain")
+  //   } catch (error) {
+  //     console.error("Form submit failed:", error);
+  //     toast.error("Failed to create batch. Please try again.")
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const onFormSubmit = async (data: BatchCreationData) => {
-    console.log("Form submitted raw:", data);
-    // const requiredFieldsValid = await trigger([
-    //   "sourceType",
-    //   "speciesName",
-    //   "productName",
-    // ]);
-    // console.log("Validation result:", requiredFieldsValid, getValues());
-    // if (!requiredFieldsValid) {
-    //   toast({
-    //     title: "Validation Error",
-    //     description:
-    //       "Please fill in all required fields (Source Type, Species Name, Product Name).",
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
-    // console.log("submit");
-    // setIsLoading(true);
-    try {
-      // Clean up the data - remove empty optional objects
-      const cleanData = {
-        ...data,
-        hatcheryData:
-          Object.keys(data.hatcheryData || {}).length > 0
-            ? data.hatcheryData
-            : undefined,
-        growOutData:
-          Object.keys(data.growOutData || {}).length > 0
-            ? data.growOutData
-            : undefined,
-        fishingData:
-          Object.keys(data.fishingData || {}).length > 0
-            ? data.fishingData
-            : undefined,
-        harvestData:
-          Object.keys(data.harvestData || {}).length > 0
-            ? data.harvestData
-            : undefined,
-        processingData:
-          Object.keys(data.processingData || {}).length > 0
-            ? data.processingData
-            : undefined,
-        storageData:
-          Object.keys(data.storageData || {}).length > 0
-            ? data.storageData
-            : undefined,
-        transportData:
-          Object.keys(data.transportData || {}).length > 0
-            ? data.transportData
-            : undefined,
-      };
+  console.log("Form submitted raw:", data);
 
-      console.log(cleanData);
+  setIsLoading(true);
+  try {
+    // Safely clean nested optional objects
+    const cleanData = {
+      ...data,
+      hatcheryData:
+        data.hatcheryData && Object.keys(data.hatcheryData ?? {}).length > 0
+          ? data.hatcheryData
+          : undefined,
+      growOutData:
+        data.growOutData && Object.keys(data.growOutData ?? {}).length > 0
+          ? data.growOutData
+          : undefined,
+      fishingData:
+        data.fishingData && Object.keys(data.fishingData ?? {}).length > 0
+          ? data.fishingData
+          : undefined,
+      harvestData:
+        data.harvestData && Object.keys(data.harvestData ?? {}).length > 0
+          ? data.harvestData
+          : undefined,
+      processingData:
+        data.processingData && Object.keys(data.processingData ?? {}).length > 0
+          ? data.processingData
+          : undefined,
+      storageData:
+        data.storageData && Object.keys(data.storageData ?? {}).length > 0
+          ? data.storageData
+          : undefined,
+      transportData:
+        data.transportData && Object.keys(data.transportData ?? {}).length > 0
+          ? data.transportData
+          : undefined,
+    };
 
-      onSubmit?.(cleanData);
+    console.log("Cleaned form data:", data);
 
-      toast({
-        title: "Batch created successfully",
-        description: "Your supply chain batch has been created.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create batch. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    const response = await fetch("/api/supply-chain/create-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      // Try to parse backend error details if available
+      let errorMessage = `Failed to create batch. Status: ${response.status}`;
+      try {
+        const errJson = await response.json();
+        console.error("API Error response:", errJson);
+        if (errJson.message) errorMessage = errJson.message;
+      } catch {
+        console.error("API returned non-JSON error");
+      }
+      throw new Error(errorMessage);
     }
-  };
+
+    const result = await response.json();
+    console.log("Batch created successfully:", result);
+
+    toast.success("Your supply chain batch has been created.");
+    router.push("/dashboard/supply-chain");
+  } catch (error: any) {
+    console.error("Form submit failed:", error);
+    toast.error(
+      "Failed to create batch. Please try again."
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const renderStep = () => {
     switch (currentStep) {
@@ -299,12 +367,12 @@ export function BatchCreationWizard({
               <Save className="h-4 w-4 mr-2" />
               Save Draft
             </Button>
-          </div>
+          </div> 
 
-          <Progress value={progress} className="w-full" />
+           <Progress value={progress} className="w-full" />
 
           {/* Step Navigation */}
-          <div className="flex items-center justify-between mt-4 overflow-x-auto">
+           <div className="flex items-center justify-between mt-4 overflow-x-auto">
             {steps.map((step) => {
               const StepIcon = step.icon;
               const isActive = step.id === currentStep;
@@ -341,17 +409,14 @@ export function BatchCreationWizard({
       </Card>
 
       {/* Form Content */}
-      <FormProvider {...methods}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            console.log("Raw submit event fired");
-          }}
-        >
+       <FormProvider {...methods}>
+         <form
+          onSubmit={handleSubmit(onSubmit, onError)}
+        > 
           {renderStep()}
 
           {/* Navigation Buttons */}
-          <Card>
+           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-between">
                 <Button
@@ -379,8 +444,8 @@ export function BatchCreationWizard({
               </div>
             </CardContent>
           </Card>
-        </form>
-      </FormProvider>
+        </form> 
+       </FormProvider>
     </div>
   );
 }

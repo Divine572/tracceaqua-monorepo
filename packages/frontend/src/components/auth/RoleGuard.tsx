@@ -53,8 +53,6 @@ export function RoleGuard({
   const { user } = useAuth();
   const router = useRouter();
 
-  console.log(authenticatedUser, user);
-
   // If not authenticated, let AuthGuard handle this
   if (!authenticatedUser || !user) {
     console.log(authenticatedUser, user);

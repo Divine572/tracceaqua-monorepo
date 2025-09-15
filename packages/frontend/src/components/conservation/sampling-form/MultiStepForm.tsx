@@ -25,6 +25,7 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from "uuid";
 import { SiteInfoStep } from "./SiteInfoStep";
 import { SpeciesDataStep } from "./SpeciesDataStep";
 import { SamplingMethodStep } from "./SamplingMethodStep";
@@ -94,16 +95,28 @@ export function MultiStepSamplingForm({
     console.log("Saving draft:", data);
   };
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     // TODO: Implement submit API call
-    console.log("Submitting record:", data);
+    // console.log("Submitting record:", data);
+    //   const response = await fetch("/api/conservation/new-record", {
+    //     method: "POST",
+    //     body: JSON.stringify(data),
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //     },
+    //   });
+    //   if(!response.ok) {
+    //     throw new Error("Failed to submit record, please try again")
+    //   }
+    //   const result = await response.json()
+    //   console.log(result)
+    //   toast.success("Your sampling record has been successfully submitted.");
   };
 
-
   const methods = useForm<SamplingFormData>({
-    resolver: zodResolver(samplingSchema),
+    resolver: zodResolver(samplingSchema) as any,
     defaultValues: existingRecord || {
-      samplingId: `SAMP_${Date.now()}`,
+      samplingId: `SAMP_${uuidv4()}`,
       locationData: {
         latitude: 6.5244,
         longitude: 3.3792, // Lagos default
@@ -180,9 +193,25 @@ export function MultiStepSamplingForm({
   const onFormSubmit = async (data: SamplingFormData) => {
     setIsLoading(true);
     try {
-      onSubmit?.(data);
+      console.log("Submitting record:", data);
+
+      const response = await fetch("/api/conservation/new-record", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit record, please try again");
+      }
+
+      const result = await response.json();
+      console.log(result);
       toast.success("Your sampling record has been successfully submitted.");
     } catch (error) {
+      console.log(error);
       toast.error("Failed to submit record. Please try again.");
     } finally {
       setIsLoading(false);
@@ -278,7 +307,7 @@ export function MultiStepSamplingForm({
 
       {/* Form Content */}
       <FormProvider {...methods}>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+        <form onSubmit={(e) => e.preventDefault()}>
           {renderStep()}
 
           {/* Navigation Buttons */}
@@ -302,7 +331,11 @@ export function MultiStepSamplingForm({
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   ) : (
-                    <Button type="submit" disabled={isLoading || !isValid}>
+                    <Button
+                      type="button"
+                      onClick={handleSubmit(onFormSubmit)}
+                      disabled={isLoading || !isValid}
+                    >
                       {isLoading ? "Submitting..." : "Submit Record"}
                     </Button>
                   )}
