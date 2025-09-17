@@ -171,7 +171,7 @@ export class SupplyChainController {
         return this.supplyChainService.traceProduct(productId);
     }
 
-    @Get('public/qr/:productId')
+    @Post('public/qr/:productId')
     @ApiOperation({
         summary: 'Generate QR code',
         description: 'Generate QR code for product traceability',
