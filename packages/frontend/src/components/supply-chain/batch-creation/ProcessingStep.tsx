@@ -290,7 +290,12 @@ const ProcessingStep = () => {
                 <FormItem>
                   <FormLabel>Passed</FormLabel>
                   <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={
+                        field.value !== undefined ? String(field.value) : ""
+                      }
+                      onValueChange={(value) => field.onChange(value === "true")}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>

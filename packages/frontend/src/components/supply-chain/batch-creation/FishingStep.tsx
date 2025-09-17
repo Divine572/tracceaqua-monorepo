@@ -39,7 +39,7 @@ const FishingStep = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormField
           control={control}
-          name="fishingMethod"
+          name="fishingData.fishingMethod"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Fishing Method</FormLabel>
@@ -52,7 +52,7 @@ const FishingStep = () => {
 
         <FormField
           control={control}
-          name="waterDepth"
+          name="fishingData.waterDepth"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Water Depth (meters)</FormLabel>
@@ -65,7 +65,7 @@ const FishingStep = () => {
 
         <FormField
           control={control}
-          name="seaConditions"
+          name="fishingData.seaConditions"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Sea Conditions</FormLabel>
@@ -82,7 +82,7 @@ const FishingStep = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={control}
-            name="latitude"
+            name="fishingData.coordinates.latitude"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Latitude</FormLabel>
@@ -100,7 +100,7 @@ const FishingStep = () => {
 
           <FormField
             control={control}
-            name="longitude"
+            name="fishingData.coordinates.longitude"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Longitude</FormLabel>
@@ -123,7 +123,7 @@ const FishingStep = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             control={control}
-            name="name"
+            name="fishingData.vesselDetails.name"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Vessel Name</FormLabel>
@@ -136,7 +136,7 @@ const FishingStep = () => {
 
           <FormField
             control={control}
-            name="registration"
+            name="fishingData.vesselDetails.registration"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Registration</FormLabel>
@@ -149,7 +149,7 @@ const FishingStep = () => {
 
           <FormField
             control={control}
-            name="captain"
+            name="fishingData.vesselDetails.captain"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Captain</FormLabel>
@@ -187,7 +187,7 @@ const FishingStep = () => {
           >
             <FormField
               control={control}
-              name="species"
+              name="fishingData.catchComposition.species"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Species</FormLabel>
@@ -200,7 +200,7 @@ const FishingStep = () => {
 
             <FormField
               control={control}
-              name="quantity"
+              name="fishingData.catchComposition.quantity"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Quantity </FormLabel>
@@ -213,7 +213,7 @@ const FishingStep = () => {
 
             <FormField
               control={control}
-              name="averageSize"
+              name="fishingData.catchComposition.averageSize"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Average Size (cm)</FormLabel>

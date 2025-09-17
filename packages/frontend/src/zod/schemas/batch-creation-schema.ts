@@ -49,10 +49,10 @@ const GrowOutDataSchema = z.object({
 const FishingDataSchema = z.object({
   fishingMethod: z.string().min(1, "Fishing method is required"),
   coordinates: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
+    latitude: numberField,
+    longitude: numberField,
   }),
-  waterDepth: z.number(),
+  waterDepth: numberField,
   vesselDetails: z.object({
     name: z.string(),
     registration: z.string(),
@@ -61,8 +61,8 @@ const FishingDataSchema = z.object({
   catchComposition: z.array(
     z.object({
       species: z.string(),
-      quantity: z.number(),
-      averageSize: z.number(),
+      quantity: numberField,
+      averageSize: numberField,
     })
   ),
   seaConditions: z.string().min(1, "Sea conditions are required"),
