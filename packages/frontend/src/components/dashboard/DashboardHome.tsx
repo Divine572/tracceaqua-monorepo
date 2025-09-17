@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { UserRole } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
+import { useBatches } from "@/hooks/use-batches";
 
 // Mock dashboard data
 const mockDashboardData = {
@@ -119,6 +120,9 @@ const mockDashboardData = {
 
 export function DashboardHome() {
   const { user } = useAuth();
+  const {batches,} = useBatches({searchTerm: "", stageFilter: "", statusFilter: ""})
+
+  console.log(batches)
 
   const { data: dashboardData = mockDashboardData, isLoading } = useQuery({
     queryKey: ["dashboard", user?.id],

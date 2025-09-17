@@ -22,6 +22,7 @@ import { Plus, Search } from "lucide-react";
 // import { SupplyChainStage } from "@/lib/supply-chain-types";
 import Link from "next/link";
 import BatchOverviewTable from "./BatchOverviewTable";
+import { useBatches } from "@/hooks/use-batches";
 
 // Mock data - replace with actual API call
 

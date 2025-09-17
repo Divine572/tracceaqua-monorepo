@@ -1,102 +1,129 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import QRCode from 'react-qr-code'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useToast } from '@/hooks/use-toast'
-import { Download, Share, Copy, QrCode } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import QRCode from "react-qr-code";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Download, Share, Copy, QrCode } from "lucide-react";
+import { cn } from "@/lib/utils";
+import axios from "axios";
 
 interface QRGeneratorProps {
-  productId?: string
-  batchId?: string
-  className?: string
+  productId?: string;
+  batchId?: string;
+  className?: string;
 }
 
-export function QRGenerator({ productId, batchId, className }: QRGeneratorProps) {
-  const [qrData, setQrData] = useState('')
-  const [qrSize, setQrSize] = useState(256)
-  const [qrLevel, setQrLevel] = useState<'L' | 'M' | 'Q' | 'H'>('M')
-  const { toast } = useToast()
+export function QRGenerator({
+  productId,
+  batchId,
+  className,
+}: QRGeneratorProps) {
+  const [qrData, setQrData] = useState("");
+  const [qrSize, setQrSize] = useState(256);
+  const [qrLevel, setQrLevel] = useState<"L" | "M" | "Q" | "H">("M");
+  const { toast } = useToast();
+
+  const {params} = useParams()
+
+  // const slug = params.slug
+  console.log(params)
 
   // Generate QR data URL
   const generateQRData = (id: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    return `${baseUrl}/trace/${id}`
-  }
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    return `${baseUrl}/trace/${id}`;
+  };
 
   // Initialize QR data
   useEffect(() => {
     if (productId) {
-      setQrData(generateQRData(productId))
+      setQrData(generateQRData(productId));
     } else if (batchId) {
-      setQrData(generateQRData(batchId))
+      setQrData(generateQRData(batchId));
     }
-  }, [productId, batchId])
+  }, [productId, batchId]);
 
   const handleCustomQR = (customId: string) => {
     if (customId.trim()) {
-      setQrData(generateQRData(customId.trim()))
+      setQrData(generateQRData(customId.trim()));
     }
-  }
+  };
 
   const downloadQR = () => {
-    const svg = document.getElementById('qr-code-svg')
-    if (!svg) return
+    const svg = document.getElementById("qr-code-svg");
+    if (!svg) return;
 
-    const svgData = new XMLSerializer().serializeToString(svg)
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    const img = new Image()
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
 
-    canvas.width = qrSize
-    canvas.height = qrSize
+    canvas.width = qrSize;
+    canvas.height = qrSize;
 
     img.onload = () => {
-      ctx?.drawImage(img, 0, 0)
-      const link = document.createElement('a')
-      link.download = `tracceaqua-qr-${Date.now()}.png`
-      link.href = canvas.toDataURL()
-      link.click()
-    }
+      ctx?.drawImage(img, 0, 0);
+      const link = document.createElement("a");
+      link.download = `tracceaqua-qr-${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    };
 
-    img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
-  }
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
 
   const copyQRUrl = async () => {
     try {
-      await navigator.clipboard.writeText(qrData)
+      await navigator.clipboard.writeText(qrData);
       toast({
         title: "Copied!",
         description: "QR code URL copied to clipboard.",
-      })
+      });
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to copy URL to clipboard.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const shareQR = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'TracceAqua Product Trace',
-          text: 'Scan this QR code to trace the product journey',
+          title: "TracceAqua Product Trace",
+          text: "Scan this QR code to trace the product journey",
           url: qrData,
-        })
+        });
       } catch (error) {
         // User cancelled sharing
       }
     } else {
-      copyQRUrl()
+      copyQRUrl();
     }
+  };
+
+  const generateQrCode = async () => {
+    const response = await axios.post("/api/v1/supply-chain/public/qr/{productId}")
   }
 
   return (
@@ -113,13 +140,16 @@ export function QRGenerator({ productId, batchId, className }: QRGeneratorProps)
       <CardContent className="space-y-6">
         {/* Custom Product ID Input */}
         {!productId && !batchId && (
-          <div className="space-y-2">
-            <Label htmlFor="productId">Product/Batch ID</Label>
-            <Input
-              id="productId"
-              placeholder="Enter product or batch ID"
-              onChange={(e) => handleCustomQR(e.target.value)}
-            />
+          // <div className="space-y-2">
+          //   <Label htmlFor="productId">Product/Batch ID</Label>
+          //   <Input
+          //     id="productId"
+          //     placeholder="Enter product or batch ID"
+          //     onChange={(e) => handleCustomQR(e.target.value)}
+          //   />
+          // </div>
+          <div className="text-center">
+            <Button>Generator QR code</Button>
           </div>
         )}
 
@@ -140,7 +170,10 @@ export function QRGenerator({ productId, batchId, className }: QRGeneratorProps)
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="size">Size</Label>
-                <Select value={qrSize.toString()} onValueChange={(value) => setQrSize(Number(value))}>
+                <Select
+                  value={qrSize.toString()}
+                  onValueChange={(value) => setQrSize(Number(value))}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -155,7 +188,12 @@ export function QRGenerator({ productId, batchId, className }: QRGeneratorProps)
 
               <div className="space-y-2">
                 <Label htmlFor="level">Error Correction</Label>
-                <Select value={qrLevel} onValueChange={(value) => setQrLevel(value as 'L' | 'M' | 'Q' | 'H')}>
+                <Select
+                  value={qrLevel}
+                  onValueChange={(value) =>
+                    setQrLevel(value as "L" | "M" | "Q" | "H")
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -195,5 +233,5 @@ export function QRGenerator({ productId, batchId, className }: QRGeneratorProps)
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
