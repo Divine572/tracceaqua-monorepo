@@ -112,98 +112,102 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
   }
 
   return (
-    <Card className="w-full max-w-lg mx-auto">
-      <CardHeader>
-        <CardTitle>QR Code Scanner</CardTitle>
-        <CardDescription>
-          Position a QR code within the camera view to scan
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isScanning ? (
-          <div className="space-y-4">
-            {/* Scanner View */}
-            <div className="relative aspect-square w-full overflow-hidden rounded-lg border">
-              <Scanner
-                onScan={handleScanResult}
-                // onError={handleScanError}
-                constraints={{
-                  facingMode: facingMode,
-                  advanced: [{ torch: flashEnabled }] as any,
-                }}
-                ViewFinder={() => (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-48 h-48 border-2 border-primary rounded-lg relative">
-                      {/* Corner brackets */}
-                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary" />
-                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary" />
-                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary" />
-                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary" />
-                      
-                      {/* Scanning line animation */}
-                      <div className="absolute top-0 left-0 w-full h-0.5 bg-primary opacity-75 animate-pulse" 
-                           style={{ 
-                             animation: 'scan-line 2s linear infinite',
-                           }} />
-                    </div>
-                  </div>
-                )}
-              />
-            </div>
-
-            {/* Scanner Controls */}
-            <div className="flex justify-center space-x-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleCamera}
-                title="Switch Camera"
-              >
-                <RotateCw className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleFlash}
-                title="Toggle Flash"
-              >
-                {flashEnabled ? (
-                  <FlashlightOff className="h-4 w-4" />
-                ) : (
-                  <Flashlight className="h-4 w-4" />
-                )}
-              </Button>
-              
-              <Button
-                variant="outline"
-                onClick={stopScanning}
-              >
-                <CameraOff className="h-4 w-4 mr-2" />
-                Stop Scanning
-              </Button>
-            </div>
-
-            {/* Instructions */}
-            <Alert>
-              <Camera className="h-4 w-4" />
-              <AlertDescription>
-                Hold your device steady and position the QR code within the scanner frame.
-              </AlertDescription>
-            </Alert>
-          </div>
-        ) : (
-          <div className="text-center space-y-4">
-            <div className="w-24 h-24 mx-auto bg-muted rounded-lg flex items-center justify-center">
-              <Camera className="h-12 w-12 text-muted-foreground" />
-            </div>
-            <Button onClick={requestPermission} className="w-full">
-              <Camera className="h-4 w-4 mr-2" />
-              Start Scanning
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div></div>
   )
+
+  // return (
+  //   <Card className="w-full max-w-lg mx-auto">
+  //     <CardHeader>
+  //       <CardTitle>QR Code Scanner</CardTitle>
+  //       <CardDescription>
+  //         Position a QR code within the camera view to scan
+  //       </CardDescription>
+  //     </CardHeader>
+  //     <CardContent className="space-y-4">
+  //       {isScanning ? (
+  //         <div className="space-y-4">
+  //           {/* Scanner View */}
+  //           <div className="relative aspect-square w-full overflow-hidden rounded-lg border">
+  //             <Scanner
+  //               onScan={handleScanResult}
+  //               // onError={handleScanError}
+  //               constraints={{
+  //                 facingMode: facingMode,
+  //                 advanced: [{ torch: flashEnabled }] as any,
+  //               }}
+  //               ViewFinder={() => (
+  //                 <div className="absolute inset-0 flex items-center justify-center">
+  //                   <div className="w-48 h-48 border-2 border-primary rounded-lg relative">
+  //                     {/* Corner brackets */}
+  //                     <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary" />
+  //                     <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary" />
+  //                     <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary" />
+  //                     <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary" />
+                      
+  //                     {/* Scanning line animation */}
+  //                     <div className="absolute top-0 left-0 w-full h-0.5 bg-primary opacity-75 animate-pulse" 
+  //                          style={{ 
+  //                            animation: 'scan-line 2s linear infinite',
+  //                          }} />
+  //                   </div>
+  //                 </div>
+  //               )}
+  //             />
+  //           </div>
+
+  //           {/* Scanner Controls */}
+  //           <div className="flex justify-center space-x-2">
+  //             <Button
+  //               variant="outline"
+  //               size="icon"
+  //               onClick={toggleCamera}
+  //               title="Switch Camera"
+  //             >
+  //               <RotateCw className="h-4 w-4" />
+  //             </Button>
+              
+  //             <Button
+  //               variant="outline"
+  //               size="icon"
+  //               onClick={toggleFlash}
+  //               title="Toggle Flash"
+  //             >
+  //               {flashEnabled ? (
+  //                 <FlashlightOff className="h-4 w-4" />
+  //               ) : (
+  //                 <Flashlight className="h-4 w-4" />
+  //               )}
+  //             </Button>
+              
+  //             <Button
+  //               variant="outline"
+  //               onClick={stopScanning}
+  //             >
+  //               <CameraOff className="h-4 w-4 mr-2" />
+  //               Stop Scanning
+  //             </Button>
+  //           </div>
+
+  //           {/* Instructions */}
+  //           <Alert>
+  //             <Camera className="h-4 w-4" />
+  //             <AlertDescription>
+  //               Hold your device steady and position the QR code within the scanner frame.
+  //             </AlertDescription>
+  //           </Alert>
+  //         </div>
+  //       ) : (
+  //         <div className="text-center space-y-4">
+  //           <div className="w-24 h-24 mx-auto bg-muted rounded-lg flex items-center justify-center">
+  //             <Camera className="h-12 w-12 text-muted-foreground" />
+  //           </div>
+  //           <Button onClick={requestPermission} className="w-full">
+  //             <Camera className="h-4 w-4 mr-2" />
+  //             Start Scanning
+  //           </Button>
+  //         </div>
+  //       )}
+  //     </CardContent>
+  //   </Card>
+  // )
 }

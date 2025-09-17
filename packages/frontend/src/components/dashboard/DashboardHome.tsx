@@ -100,7 +100,7 @@ const mockDashboardData = {
     admin: [
       {
         label: "User Management",
-        href: "/dashboard/admin/users",
+        href: "/dashboard/admin",
         icon: Package,
       },
       {
@@ -396,7 +396,7 @@ export function DashboardHome() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href="/profile/role-application">
+              <Link href="/dashboard/profile/role-application">
                 <Button variant="outline" className="w-full">
                   Become a Professional User
                   <ArrowRight className="h-4 w-4 ml-2" />

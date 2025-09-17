@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const response = await axios.get(
-      `${process.env.BACKEND_URL_DEV}/api/auth/me`, {
+      `${process.env.BACKEND_URL_DEV}/auth/me`, {
         headers: {Authorization: `Bearer ${userToken}`}
       });
 
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       throw new Error();
     }
 
-    return NextResponse.json({ success: true, data: response.data });
+    return NextResponse.json({ data: response.data });
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       console.error("Axios error:", error.response?.data || error.message);

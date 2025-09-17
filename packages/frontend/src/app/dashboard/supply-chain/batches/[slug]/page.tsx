@@ -1,973 +1,1003 @@
-"use client";
+// "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  ArrowLeft,
-  Edit,
-  QrCode,
-  Share,
-  Download,
-  MapPin,
-  Calendar,
-  User,
-  Building,
-  Fish,
-  Truck,
-  ShieldCheck,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Eye,
-  ExternalLink,
-  FileText,
-  Thermometer,
-  Star,
-} from "lucide-react";
-import {
-  SupplyChainBatch,
-  SupplyChainStage,
-  ProductType,
-  ProductCategory,
-} from "@/lib/supply-chain-types";
-import {
-  formatDate,
-  formatDateTime,
-  getSupplyChainStageColor,
-} from "@/lib/utils";
-import { QRGenerator } from "@/components/qr-code/QRGenerator";
+// import React, { useState } from "react";
+// // import { QRCodeSVG } from 'qr-code';
+// import {
+//   ArrowLeft,
+//   Edit,
+//   Share2,
+//   Download,
+//   MapPin,
+//   Calendar,
+//   User,
+//   Building,
+//   Fish,
+//   Truck,
+//   ShieldCheck,
+//   CheckCircle,
+//   Clock,
+//   Eye,
+//   EyeOff,
+//   ExternalLink,
+//   FileText,
+//   Thermometer,
+//   Star,
+//   Package,
+//   Factory,
+//   Anchor,
+//   Database,
+//   Activity,
+//   TrendingUp,
+//   Globe,
+//   AlertCircle,
+//   BarChart3,
+// } from "lucide-react";
+// import { Button } from "@/components/ui/button";
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// import {
+//   Card,
+//   CardContent,
+//   CardHeader,
+//   CardTitle,
+//   CardDescription,
+// } from "@/components/ui/card";
+// import { Badge } from "@/components/ui/badge";
+// import OverviewCards from "@/components/supply-chain/batch-creation/view/OverviewCards";
 
-// Mock data using the updated types
-const mockBatch: SupplyChainBatch = {
-  id: "1",
-  batchNumber: "TAQ-2024-001",
-  productType: ProductType.WILD_CAPTURE,
-  category: ProductCategory.MOLLUSCS,
-  species: "Crassostrea gigas",
-  commonName: "Pacific Oyster",
-  currentStage: SupplyChainStage.PROCESSING,
-  status: "active",
-  qrCode: "TAQ-2024-001-QR",
-  harvest: {
-    method: "Hand Collection",
-    gearType: "Collection bags",
-    vesselInfo: {
-      name: "Sea Explorer",
-      registration: "LN-2024-001",
-      captain: "John Fisher",
-    },
-    harvestDate: new Date("2024-01-15T08:00:00Z"),
-    location: {
-      name: "Lagos Lagoon Oyster Beds",
-      coordinates: { latitude: 6.5244, longitude: 3.3792 },
-      region: "Lagos State",
-      waterBodyType: "brackish",
-      description: "Sustainable oyster farming area with good water quality",
-    },
-    waterConditions: {
-      temperature: 26.5,
-      salinity: 15.2,
-      pH: 7.2,
-      weather: "Clear skies, calm waters",
-    },
-    permits: [
-      {
-        type: "Fishing License",
-        number: "FL-2024-001",
-        issuer: "Lagos State Ministry of Agriculture",
-        validUntil: new Date("2024-12-31"),
-      },
-    ],
-  },
-  stages: [
-    {
-      stage: SupplyChainStage.HARVEST,
-      timestamp: new Date("2024-01-15T08:00:00Z"),
-      operator: {
-        id: "op1",
-        name: "John Fisher",
-        role: "FISHERMAN",
-        organization: "Ocean Harvest Co.",
-      },
-      details: {
-        totalQuantity: 150,
-        method: "Hand Collection",
-        waterTemperature: 26.5,
-        qualityGrade: "Premium",
-      },
-      documents: [
-        {
-          name: "Harvest Certificate",
-          type: "certificate",
-          hash: "QmXYZ123...",
-          url: "https://ipfs.io/ipfs/QmXYZ123...",
-        },
-      ],
-      qualityMetrics: {
-        appearance: 9,
-        freshness: 9,
-        size: {
-          average: 8.5,
-          range: "7-12 cm",
-          unit: "cm",
-        },
-        weight: {
-          totalKg: 150,
-          averagePerPiece: 0.12,
-        },
-      },
-      verified: true,
-      blockchainTxHash: "0x1234567890abcdef...",
-    },
-    {
-      stage: SupplyChainStage.PROCESSING,
-      timestamp: new Date("2024-01-16T14:00:00Z"),
-      operator: {
-        id: "op2",
-        name: "Lagos Seafood Processing",
-        role: "PROCESSOR",
-        organization: "Seafood Processing Ltd",
-      },
-      details: {
-        facilityName: "Apapa Processing Plant",
-        facilityLicense: "SP-2024-002",
-        processType: "Fresh cleaning and grading",
-        methods: ["sorting", "cleaning", "grading"],
-        temperature: 2,
-        preservation: "Ice-packed",
-        packaging: {
-          material: "Food-grade containers",
-          size: "5kg boxes",
-          labeling: "TracceAqua certified",
-        },
-        haccpCompliance: true,
-      },
-      documents: [
-        {
-          name: "Processing Report",
-          type: "report",
-          hash: "QmABC456...",
-          url: "https://ipfs.io/ipfs/QmABC456...",
-        },
-      ],
-      qualityMetrics: {
-        appearance: 9,
-        freshness: 8,
-        size: {
-          average: 20,
-          range: "",
-          unit: "string",
-        },
-        weight: {
-          totalKg: 138,
-          averagePerPiece: 0.115,
-        },
-      },
-      verified: false,
-    },
-  ],
-  createdBy: "user1",
-  createdAt: new Date("2024-01-15"),
-  updatedAt: new Date("2024-01-16"),
-  tags: ["premium", "export-grade", "sustainable"],
-  notes: "High quality harvest from certified sustainable area",
-  views: 45,
-  ratings: [
-    {
-      rating: 5,
-      comment: "Excellent quality oysters, very fresh!",
-      date: new Date("2024-01-18"),
-      verifiedPurchase: true,
-    },
-    {
-      rating: 4,
-      comment: "Good size and taste",
-      date: new Date("2024-01-17"),
-      verifiedPurchase: true,
-    },
-  ],
-};
 
-export default function BatchDetails() {
-  const params = useParams();
-  const batchId = params.id as string;
+// type SupplyStage = "HARVEST" | "PROCESSING" | "STORAGE" | "TRANSPORT" | "RETAIL" | "SOLD"
 
-  const { data: batch = mockBatch, isLoading } = useQuery({
-    queryKey: ["batch", batchId],
-    queryFn: async () => {
-      // TODO: Replace with actual API call
-      return mockBatch;
-    },
-  });
+// // Mock data based on your API structure
+// const mockBatchData = {
+//   id: "batch_001",
+//   productId: "BAC_2024_001",
+//   userId: "user_123",
+//   batchId: "BATCH_20240115_001",
+//   sourceType: "WILD_CAPTURE",
+//   speciesName: "Crassostrea gigas",
+//   productName: "Fresh Pacific Oysters",
+//   productDescription:
+//     "Premium quality Pacific oysters harvested from sustainable beds in Lagos Lagoon",
+//   currentStage: "PROCESSING",
+//   status: "ACTIVE",
+//   isPublic: true,
+//   location: "Lagos, Nigeria",
+//   notes:
+//     "High quality harvest from certified sustainable area with excellent water conditions",
+//   hatcheryData: null,
+//   growOutData: null,
+//   fishingData: {
+//     fishingMethod: "Hand Collection",
+//     coordinates: {
+//       latitude: 6.5244,
+//       longitude: 3.3792,
+//     },
+//     waterDepth: 12,
+//     vesselDetails: {
+//       name: "Sea Explorer",
+//       registration: "LN-2024-001",
+//       captain: "John Fisher",
+//     },
+//     catchComposition: [
+//       {
+//         species: "Crassostrea gigas",
+//         quantity: 150,
+//         averageSize: 8.5,
+//       },
+//     ],
+//     seaConditions: "Clear skies, calm waters, optimal conditions",
+//   },
+//   harvestData: {
+//     harvestMethod: "Manual collection with sustainable practices",
+//     harvestLocation: "Lagos Lagoon Oyster Beds - Zone A",
+//     totalWeight: 150,
+//     pieceCount: 1250,
+//     averageSize: 8.5,
+//     qualityGrade: "Premium",
+//     postHarvestHandling:
+//       "Immediate ice packing and transport to processing facility",
+//   },
+//   processingData: {
+//     facilityName: "Lagos Seafood Processing Ltd",
+//     processingMethod: "Fresh cleaning, grading, and packaging",
+//     processingDate: "2024-01-16T10:00:00Z",
+//     inputWeight: 150,
+//     outputWeight: 138,
+//     processingYield: 92,
+//     qualityTests: [
+//       {
+//         testType: "Microbiological",
+//         result: "Negative for harmful bacteria",
+//         standard: "HACCP",
+//         passed: true,
+//       },
+//       {
+//         testType: "Heavy metals",
+//         result: "Within acceptable limits",
+//         standard: "EU Standards",
+//         passed: true,
+//       },
+//     ],
+//     packaging: {
+//       type: "Vacuum sealed",
+//       size: "5kg boxes",
+//       material: "Food-grade containers",
+//       labelInfo: "TracceAqua certified, batch tracked",
+//     },
+//   },
+//   storageData: {
+//     storageFacility: "Cold Storage Warehouse A",
+//     storageTemperature: -2,
+//     storageMethod: "Refrigerated storage",
+//     storageDuration: 5,
+//     humidityLevel: 85,
+//     qualityChecks: [
+//       {
+//         checkDate: "2024-01-17T08:00:00Z",
+//         temperature: -2,
+//         quality: "Excellent",
+//         notes: "Product maintaining optimal freshness",
+//       },
+//     ],
+//   },
+//   transportData: {
+//     transportMethod: "Refrigerated truck",
+//     vehicleDetails: {
+//       type: "Refrigerated truck",
+//       registration: "ABC-123-DE",
+//       driver: "Mohammed Ali",
+//     },
+//     originLocation: "Lagos Processing Plant",
+//     destinationLocation: "Abuja Distribution Center",
+//     transportTemperature: -2,
+//     transportDuration: 8,
+//     coldChainMonitoring: [
+//       {
+//         timestamp: "2024-01-18T06:00:00Z",
+//         temperature: -2,
+//         location: "Departure - Lagos",
+//       },
+//       {
+//         timestamp: "2024-01-18T10:00:00Z",
+//         temperature: -1.8,
+//         location: "Highway checkpoint - Ogun State",
+//       },
+//     ],
+//   },
+//   fileHashes: ["QmXYZ123abc...", "QmABC456def..."],
+//   dataHash: "0xabcdef1234567890...",
+//   blockchainHash: "0x1234567890abcdef1234567890abcdef12345678",
+//   createdAt: "2024-01-15T08:00:00Z",
+//   updatedAt: "2024-01-18T14:30:00Z",
+//   user: {
+//     id: "user_123",
+//     name: "John Fisher",
+//     email: "john.fisher@example.com",
+//     role: "FISHERMAN",
+//   },
+//   stageHistory: [
+//     {
+//       id: "stage_001",
+//       stage: "HARVEST",
+//       userId: "user_123",
+//       timestamp: "2024-01-15T08:00:00Z",
+//       data: {
+//         method: "Hand Collection",
+//         location: "Lagos Lagoon",
+//         weather: "Clear, calm",
+//       },
+//       location: "Lagos Lagoon Oyster Beds",
+//       notes: "Sustainable harvest using traditional methods",
+//       fileHashes: ["QmXYZ123abc..."],
+//       blockchainHash: "0x1234567890abcdef...",
+//       user: {
+//         name: "John Fisher",
+//         role: "FISHERMAN",
+//       },
+//     },
+//     {
+//       id: "stage_002",
+//       stage: "PROCESSING",
+//       userId: "user_456",
+//       timestamp: "2024-01-16T10:00:00Z",
+//       data: {
+//         facility: "Lagos Seafood Processing Ltd",
+//         method: "Fresh cleaning and grading",
+//         yield: 92,
+//       },
+//       location: "Apapa Processing Plant",
+//       notes: "HACCP compliant processing with quality testing",
+//       fileHashes: ["QmABC456def..."],
+//       blockchainHash: "0x2345678901bcdef0...",
+//       user: {
+//         name: "Lagos Seafood Processing",
+//         role: "PROCESSOR",
+//       },
+//     },
+//     {
+//       id: "stage_003",
+//       stage: "STORAGE",
+//       userId: "user_789",
+//       timestamp: "2024-01-17T14:00:00Z",
+//       data: {
+//         facility: "Cold Storage Warehouse A",
+//         temperature: -2,
+//         duration: 5,
+//       },
+//       location: "Lagos Cold Storage Facility",
+//       notes: "Optimal storage conditions maintained",
+//       fileHashes: [],
+//       blockchainHash: "0x3456789012cdef01...",
+//       user: {
+//         name: "Cold Storage Co.",
+//         role: "STORAGE_MANAGER",
+//       },
+//     },
+//   ],
+//   feedbackCount: 12,
+//   averageRating: 4.7,
+// };
 
-  const getStageStatus = (stage: SupplyChainStage) => {
-    const stageIndex = Object.values(SupplyChainStage).indexOf(stage);
-    const currentStageIndex = Object.values(SupplyChainStage).indexOf(
-      batch.currentStage
-    );
+// // Utility functions
+// const formatDate = (dateString: string) => {
+//   return new Date(dateString).toLocaleDateString("en-US", {
+//     year: "numeric",
+//     month: "long",
+//     day: "numeric",
+//   });
+// };
 
-    if (stageIndex < currentStageIndex) return "completed";
-    if (stageIndex === currentStageIndex) return "current";
-    return "pending";
-  };
+// const formatDateTime = (dateString: string) => {
+//   return new Date(dateString).toLocaleString("en-US", {
+//     year: "numeric",
+//     month: "long",
+//     day: "numeric",
+//     hour: "2-digit",
+//     minute: "2-digit",
+//   });
+// };
 
-  const getStageIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case "current":
-        return <Clock className="h-5 w-5 text-blue-600" />;
-      default:
-        return (
-          <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
-        );
-    }
-  };
+// const getStageIcon = (
+//   stage: SupplyStage
+// ) => {
+//   switch (stage) {
+//     case "HARVEST":
+//       return Fish;
+//     case "PROCESSING":
+//       return Factory;
+//     case "STORAGE":
+//       return Building;
+//     case "TRANSPORT":
+//       return Truck;
+//     case "RETAIL":
+//       return Package;
+//     case "SOLD":
+//       return CheckCircle;
+//     default:
+//       return Activity;
+//   }
+// };
 
-  const averageRating =
-    batch.ratings!.reduce((acc, rating) => acc + rating.rating, 0) /
-      (batch.ratings?.length || 1) || 0;
+// const getStageColor = (stage: SupplyStage, isCompleted = false, isCurrent = false) => {
+//   if (isCurrent) return "text-blue-600 bg-blue-50";
+//   if (isCompleted) return "text-green-600 bg-green-50";
+//   return "text-gray-400 bg-gray-50";
+// };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        Loading batch details...
-      </div>
-    );
-  }
+// const Separator = ({ className = "" }) => (
+//   <hr className={`border-gray-200 ${className}`} />
+// );
 
+// // Main Component
+// const BatchDetailsPage = () => {
+//   // Mock params - replace with actual routing in real implementation
+//   const batchId = "batch_001";
+
+//   // Mock loading state - replace with actual API call
+//   const [isLoading, setIsLoading] = useState(false);
+//   const batch = mockBatchData;
+
+//   const getCompletedStages = () => {
+//     return batch.stageHistory?.map((stage) => stage.stage) || [];
+//   };
+
+//   const getStageStatus = (stageName: string) => {
+//     const completedStages = getCompletedStages();
+//     const isCompleted = completedStages.includes(stageName);
+//     const isCurrent = batch.currentStage === stageName;
+
+//     if (isCompleted) return "completed";
+//     if (isCurrent) return "current";
+//     return "pending";
+//   };
+
+//   const renderStageData = (stageData, stageType) => {
+//     if (!stageData) return null;
+
+//     const renderObjectData = (obj, title) => (
+//       <div className="mb-4">
+//         <h4 className="font-medium text-gray-900 mb-2">{title}</h4>
+//         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//           {Object.entries(obj).map(([key, value]) => (
+//             <div key={key} className="text-sm">
+//               <span className="text-gray-600 capitalize">
+//                 {key.replace(/([A-Z])/g, " $1").toLowerCase()}:
+//               </span>
+//               <span className="ml-2 text-gray-900">
+//                 {typeof value === "object"
+//                   ? JSON.stringify(value)
+//                   : String(value)}
+//               </span>
+//             </div>
+//           ))}
+//         </div>
+//       </div>
+//     );
+
+//     return (
+//       <div className="space-y-4">
+//         {Object.entries(stageData).map(([key, value]) => {
+//           if (
+//             typeof value === "object" &&
+//             value !== null &&
+//             !Array.isArray(value)
+//           ) {
+//             return renderObjectData(value, key.replace(/([A-Z])/g, " $1"));
+//           } else if (Array.isArray(value)) {
+//             return (
+//               <div key={key} className="mb-4">
+//                 <h4 className="font-medium text-gray-900 mb-2 capitalize">
+//                   {key.replace(/([A-Z])/g, " $1")}
+//                 </h4>
+//                 {value.map((item, index) => (
+//                   <div key={index} className="p-3 bg-gray-50 rounded-lg mb-2">
+//                     {typeof item === "object" ? (
+//                       Object.entries(item).map(([itemKey, itemValue]) => (
+//                         <div key={itemKey} className="text-sm">
+//                           <span className="text-gray-600 capitalize">
+//                             {itemKey.replace(/([A-Z])/g, " $1").toLowerCase()}:
+//                           </span>
+//                           <span className="ml-2 text-gray-900">
+//                             {String(itemValue)}
+//                           </span>
+//                         </div>
+//                       ))
+//                     ) : (
+//                       <div className="text-sm text-gray-900">
+//                         {String(item)}
+//                       </div>
+//                     )}
+//                   </div>
+//                 ))}
+//               </div>
+//             );
+//           } else {
+//             return (
+//               <div key={key} className="text-sm">
+//                 <span className="text-gray-600 capitalize">
+//                   {key.replace(/([A-Z])/g, " $1").toLowerCase()}:
+//                 </span>
+//                 <span className="ml-2 text-gray-900">{String(value)}</span>
+//               </div>
+//             );
+//           }
+//         })}
+//       </div>
+//     );
+//   };
+
+//   if (isLoading) {
+//     return (
+//       <div className="flex items-center justify-center h-64">
+//         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+//         <span className="ml-3 text-gray-600">Loading batch details...</span>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="min-h-screen bg-gray-50">
+//       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+//         {/* Header */}
+//         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+//           <div className="flex items-center gap-4 mb-4 sm:mb-0">
+//             <Button variant="outline" size="sm">
+//               <ArrowLeft className="h-4 w-4 mr-2" />
+//               Back to Batches
+//             </Button>
+//             <div>
+//               <h1 className="text-3xl font-bold text-gray-900">
+//                 {batch.productId}
+//               </h1>
+//               <p className="text-gray-600">
+//                 {batch.speciesName} • {batch.productName}
+//               </p>
+//             </div>
+//           </div>
+
+//           <div className="flex items-center gap-2">
+//             <Button variant="outline" size="sm">
+//               <Share2 className="h-4 w-4 mr-2" />
+//               Share
+//             </Button>
+//             <Button variant="outline" size="sm">
+//               <Download className="h-4 w-4 mr-2" />
+//               Export
+//             </Button>
+//             <Button variant="outline" size="sm">
+//               <Edit className="h-4 w-4 mr-2" />
+//               Edit
+//             </Button>
+//             <Button>
+//               <Eye className="h-4 w-4 mr-2" />
+//               Public View
+//             </Button>
+//           </div>
+//         </div>
+
+//         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+//           {/* Main Content */}
+//           <div className="lg:col-span-2 space-y-8">
+//             {/* Overview Cards */}
+//             <OverviewCards batch={batch} />
+
+//             {/* Supply Chain Timeline */}
+//             <Card>
+//               <CardHeader>
+//                 <CardTitle>Supply Chain Journey</CardTitle>
+//                 <CardDescription>
+//                   Track the journey of this batch through the supply chain
+//                 </CardDescription>
+//               </CardHeader>
+//               <CardContent>
+//                 <div className="space-y-6">
+//                   {[
+//                     "HARVEST",
+//                     "PROCESSING",
+//                     "STORAGE",
+//                     "TRANSPORT",
+//                     "RETAIL",
+//                     "SOLD",
+//                   ].map((stageName, index) => {
+//                     const status = getStageStatus(stageName);
+//                     const StageIcon = getStageIcon(stageName);
+//                     const stageHistory = batch.stageHistory?.find(
+//                       (stage) => stage.stage === stageName
+//                     );
+
+//                     return (
+//                       <div key={stageName} className="flex items-start gap-4">
+//                         <div className="flex flex-col items-center">
+//                           <div
+//                             className={`p-2 rounded-full ${getStageColor(stageName, status === "completed", status === "current")}`}
+//                           >
+//                             <StageIcon className="h-5 w-5" />
+//                           </div>
+//                           {index < 5 && (
+//                             <div
+//                               className={`w-px h-8 mt-2 ${
+//                                 status === "completed"
+//                                   ? "bg-green-200"
+//                                   : "bg-gray-200"
+//                               }`}
+//                             />
+//                           )}
+//                         </div>
+
+//                         <div className="flex-1 pb-6">
+//                           <div className="flex items-center justify-between mb-2">
+//                             <h3
+//                               className={`font-medium capitalize ${
+//                                 status === "current"
+//                                   ? "text-blue-600"
+//                                   : status === "completed"
+//                                     ? "text-green-600"
+//                                     : "text-gray-500"
+//                               }`}
+//                             >
+//                               {stageName.toLowerCase()}
+//                             </h3>
+//                             {stageHistory && (
+//                               <div className="flex items-center gap-2">
+//                                 {stageHistory.blockchainHash && (
+//                                   <Badge variant="default">
+//                                     Blockchain Verified
+//                                   </Badge>
+//                                 )}
+//                                 <Badge
+//                                   variant={
+//                                     status === "completed"
+//                                       ? "default"
+//                                       : "secondary"
+//                                   }
+//                                 >
+//                                   {status === "completed"
+//                                     ? "Completed"
+//                                     : "In Progress"}
+//                                 </Badge>
+//                               </div>
+//                             )}
+//                           </div>
+
+//                           {stageHistory ? (
+//                             <div className="space-y-2">
+//                               <div className="text-sm text-gray-600">
+//                                 <div className="flex items-center gap-2">
+//                                   <Calendar className="h-4 w-4" />
+//                                   {formatDateTime(stageHistory.timestamp)}
+//                                 </div>
+//                                 <div className="flex items-center gap-2 mt-1">
+//                                   <User className="h-4 w-4" />
+//                                   {stageHistory.user?.name} (
+//                                   {stageHistory.user?.role})
+//                                 </div>
+//                                 <div className="flex items-center gap-2 mt-1">
+//                                   <MapPin className="h-4 w-4" />
+//                                   {stageHistory.location}
+//                                 </div>
+//                               </div>
+//                               {stageHistory.notes && (
+//                                 <p className="text-sm text-gray-700 italic">
+//                                   "{stageHistory.notes}"
+//                                 </p>
+//                               )}
+//                             </div>
+//                           ) : (
+//                             <p className="text-sm text-gray-500">
+//                               {status === "current"
+//                                 ? "In progress..."
+//                                 : "Pending"}
+//                             </p>
+//                           )}
+//                         </div>
+//                       </div>
+//                     );
+//                   })}
+//                 </div>
+//               </CardContent>
+//             </Card>
+
+//             {/* Detailed Information Tabs */}
+//             <Tabs defaultValue="source" className="w-full">
+//               <TabsList>
+//                 <TabsTrigger value="source">Source Data</TabsTrigger>
+//                 <TabsTrigger value="stages">Stage Details</TabsTrigger>
+//                 <TabsTrigger value="blockchain">Blockchain</TabsTrigger>
+//                 <TabsTrigger value="quality">Quality & Tests</TabsTrigger>
+//               </TabsList>
+
+//               <TabsContent value="source">
+//                 <div className="space-y-6">
+//                   {batch.sourceType === "WILD_CAPTURE" && batch.fishingData && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle className="flex items-center gap-2">
+//                           <Anchor className="h-5 w-5" />
+//                           Fishing Data
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         {renderStageData(batch.fishingData, "fishing")}
+//                       </CardContent>
+//                     </Card>
+//                   )}
+
+//                   {batch.sourceType === "FARMED" && batch.hatcheryData && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle className="flex items-center gap-2">
+//                           <Fish className="h-5 w-5" />
+//                           Hatchery Data
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         {renderStageData(batch.hatcheryData, "hatchery")}
+//                       </CardContent>
+//                     </Card>
+//                   )}
+
+//                   {batch.sourceType === "FARMED" && batch.growOutData && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle className="flex items-center gap-2">
+//                           <Building className="h-5 w-5" />
+//                           Grow-Out Data
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         {renderStageData(batch.growOutData, "growout")}
+//                       </CardContent>
+//                     </Card>
+//                   )}
+
+//                   {batch.harvestData && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle className="flex items-center gap-2">
+//                           <Package className="h-5 w-5" />
+//                           Harvest Data
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         {renderStageData(batch.harvestData, "harvest")}
+//                       </CardContent>
+//                     </Card>
+//                   )}
+//                 </div>
+//               </TabsContent>
+
+//               <TabsContent value="stages">
+//                 <div className="space-y-6">
+//                   {batch.processingData && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle className="flex items-center gap-2">
+//                           <Factory className="h-5 w-5" />
+//                           Processing Data
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         {renderStageData(batch.processingData, "processing")}
+//                       </CardContent>
+//                     </Card>
+//                   )}
+
+//                   {batch.storageData && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle className="flex items-center gap-2">
+//                           <Building className="h-5 w-5" />
+//                           Storage Data
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         {renderStageData(batch.storageData, "storage")}
+//                       </CardContent>
+//                     </Card>
+//                   )}
+
+//                   {batch.transportData && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle className="flex items-center gap-2">
+//                           <Truck className="h-5 w-5" />
+//                           Transport Data
+//                         </CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         {renderStageData(batch.transportData, "transport")}
+//                       </CardContent>
+//                     </Card>
+//                   )}
+//                 </div>
+//               </TabsContent>
+
+//               <TabsContent value="blockchain">
+//                 <Card>
+//                   <CardHeader>
+//                     <CardTitle className="flex items-center gap-2">
+//                       <Database className="h-5 w-5" />
+//                       Blockchain & IPFS Data
+//                     </CardTitle>
+//                     <CardDescription>
+//                       Immutable records and decentralized storage
+//                     </CardDescription>
+//                   </CardHeader>
+//                   <CardContent>
+//                     <div className="space-y-6">
+//                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                         <div>
+//                           <h4 className="font-medium text-gray-900 mb-3">
+//                             Blockchain Information
+//                           </h4>
+//                           <div className="space-y-2 text-sm">
+//                             <div>
+//                               <span className="text-gray-600">Data Hash:</span>
+//                               <div className="font-mono text-xs bg-gray-100 p-2 rounded mt-1">
+//                                 {batch.dataHash}
+//                               </div>
+//                             </div>
+//                             <div>
+//                               <span className="text-gray-600">
+//                                 Blockchain Hash:
+//                               </span>
+//                               <div className="font-mono text-xs bg-gray-100 p-2 rounded mt-1">
+//                                 {batch.blockchainHash}
+//                               </div>
+//                             </div>
+//                           </div>
+//                         </div>
+
+//                         <div>
+//                           <h4 className="font-medium text-gray-900 mb-3">
+//                             IPFS Files
+//                           </h4>
+//                           <div className="space-y-2">
+//                             {batch.fileHashes.map((hash, index) => (
+//                               <div
+//                                 key={index}
+//                                 className="flex items-center justify-between p-2 bg-gray-50 rounded"
+//                               >
+//                                 <div className="font-mono text-xs">{hash}</div>
+//                                 <Button variant="outline" size="sm">
+//                                   <ExternalLink className="h-4 w-4" />
+//                                 </Button>
+//                               </div>
+//                             ))}
+//                           </div>
+//                         </div>
+//                       </div>
+
+//                       <div>
+//                         <h4 className="font-medium text-gray-900 mb-3">
+//                           Stage History Verification
+//                         </h4>
+//                         <div className="space-y-3">
+//                           {batch.stageHistory.map((stage, index) => (
+//                             <div
+//                               key={index}
+//                               className="flex items-center justify-between p-3 border rounded-lg"
+//                             >
+//                               <div>
+//                                 <div className="font-medium capitalize">
+//                                   {stage.stage}
+//                                 </div>
+//                                 <div className="text-sm text-gray-600">
+//                                   {formatDateTime(stage.timestamp)}
+//                                 </div>
+//                               </div>
+//                               <div className="flex items-center gap-2">
+//                                 {stage.blockchainHash ? (
+//                                   <Badge variant="default">
+//                                     <ShieldCheck className="h-3 w-3 mr-1" />
+//                                     Verified
+//                                   </Badge>
+//                                 ) : (
+//                                   <Badge variant="secondary">
+//                                     <AlertCircle className="h-3 w-3 mr-1" />
+//                                     Pending
+//                                   </Badge>
+//                                 )}
+//                               </div>
+//                             </div>
+//                           ))}
+//                         </div>
+//                       </div>
+//                     </div>
+//                   </CardContent>
+//                 </Card>
+//               </TabsContent>
+
+//               <TabsContent value="quality">
+//                 <div className="space-y-6">
+//                   {batch.processingData?.qualityTests && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle>Quality Tests</CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <div className="space-y-3">
+//                           {batch.processingData.qualityTests.map(
+//                             (test, index) => (
+//                               <div
+//                                 key={index}
+//                                 className="p-4 border rounded-lg"
+//                               >
+//                                 <div className="flex items-center justify-between mb-2">
+//                                   <h4 className="font-medium">
+//                                     {test.testType}
+//                                   </h4>
+//                                   <Badge>
+//                                     {test.passed ? "Passed" : "Failed"}
+//                                   </Badge>
+//                                 </div>
+//                                 <div className="text-sm text-gray-600">
+//                                   <div>
+//                                     <strong>Result:</strong> {test.result}
+//                                   </div>
+//                                   <div>
+//                                     <strong>Standard:</strong> {test.standard}
+//                                   </div>
+//                                 </div>
+//                               </div>
+//                             )
+//                           )}
+//                         </div>
+//                       </CardContent>
+//                     </Card>
+//                   )}
+
+//                   {batch.storageData?.qualityChecks && (
+//                     <Card>
+//                       <CardHeader>
+//                         <CardTitle>Storage Quality Checks</CardTitle>
+//                       </CardHeader>
+//                       <CardContent>
+//                         <div className="space-y-3">
+//                           {batch.storageData.qualityChecks.map(
+//                             (check, index) => (
+//                               <div
+//                                 key={index}
+//                                 className="p-4 border rounded-lg"
+//                               >
+//                                 <div className="flex items-center justify-between mb-2">
+//                                   <h4 className="font-medium">
+//                                     {formatDate(check.checkDate)}
+//                                   </h4>
+//                                   <Badge variant="outline">
+//                                     {check.quality}
+//                                   </Badge>
+//                                 </div>
+//                                 <div className="text-sm text-gray-600">
+//                                   <div>
+//                                     <strong>Temperature:</strong>{" "}
+//                                     {check.temperature}°C
+//                                   </div>
+//                                   {check.notes && (
+//                                     <div>
+//                                       <strong>Notes:</strong> {check.notes}
+//                                     </div>
+//                                   )}
+//                                 </div>
+//                               </div>
+//                             )
+//                           )}
+//                         </div>
+//                       </CardContent>
+//                     </Card>
+//                   )}
+//                 </div>
+//               </TabsContent>
+//             </Tabs>
+//           </div>
+
+//           {/* Sidebar */}
+//           <div className="space-y-6">
+//             {/* Basic Info */}
+//             <Card>
+//               <CardHeader>
+//                 <CardTitle>Batch Information</CardTitle>
+//               </CardHeader>
+//               <CardContent className="space-y-4">
+//                 <div>
+//                   <h4 className="font-medium text-gray-900">Product ID</h4>
+//                   <p className="text-sm text-gray-600">{batch.productId}</p>
+//                 </div>
+
+//                 <div>
+//                   <h4 className="font-medium text-gray-900">Batch ID</h4>
+//                   <p className="text-sm text-gray-600">{batch.batchId}</p>
+//                 </div>
+
+//                 <div>
+//                   <h4 className="font-medium text-gray-900">Source Type</h4>
+//                   <Badge variant="outline" className="capitalize">
+//                     {batch.sourceType.replace("_", " ").toLowerCase()}
+//                   </Badge>
+//                 </div>
+
+//                 <div>
+//                   <h4 className="font-medium text-gray-900">Status</h4>
+//                   <Badge
+//                     variant={
+//                       batch.status === "ACTIVE" ? "default" : "secondary"
+//                     }
+//                   >
+//                     {batch.status}
+//                   </Badge>
+//                 </div>
+
+//                 <Separator />
+
+//                 <div>
+//                   <h4 className="font-medium text-gray-900">Created</h4>
+//                   <p className="text-sm text-gray-600">
+//                     {formatDate(batch.createdAt)}
+//                   </p>
+//                 </div>
+
+//                 <div>
+//                   <h4 className="font-medium text-gray-900">Last Updated</h4>
+//                   <p className="text-sm text-gray-600">
+//                     {formatDate(batch.updatedAt)}
+//                   </p>
+//                 </div>
+
+//                 <div>
+//                   <h4 className="font-medium text-gray-900">Visibility</h4>
+//                   <div className="flex items-center gap-2">
+//                     {batch.isPublic ? (
+//                       <>
+//                         <Globe className="h-4 w-4 text-green-600" />
+//                         <span className="text-sm text-green-600">Public</span>
+//                       </>
+//                     ) : (
+//                       <>
+//                         <EyeOff className="h-4 w-4 text-gray-600" />
+//                         <span className="text-sm text-gray-600">Private</span>
+//                       </>
+//                     )}
+//                   </div>
+//                 </div>
+//               </CardContent>
+//             </Card>
+
+//             {/* QR Code */}
+//             <Card>
+//               <CardHeader>
+//                 <CardTitle>QR Code</CardTitle>
+//                 <CardDescription>
+//                   Scan to view public trace information
+//                 </CardDescription>
+//               </CardHeader>
+//               <CardContent className="text-center">
+//                 <div className="flex justify-center mb-4">
+//                   <div className="bg-white p-4 rounded-lg border">
+//                     {/* <QRCodeSVG 
+//                       value={JSON.stringify({
+//                         productId: batch.productId,
+//                         batchId: batch.batchId,
+//                         traceUrl: `https://tracceaqua.vercel.app/trace/${batch.productId}`
+//                       })} 
+//                       size={150} 
+//                     /> */}
+//                   </div>
+//                 </div>
+//                 <Button variant="outline" size="sm" className="w-full">
+//                   <Download className="h-4 w-4 mr-2" />
+//                   Download QR Code
+//                 </Button>
+//               </CardContent>
+//             </Card>
+
+//             {/* User Info */}
+//             {batch.user && (
+//               <Card>
+//                 <CardHeader>
+//                   <CardTitle>Created By</CardTitle>
+//                 </CardHeader>
+//                 <CardContent>
+//                   <div className="space-y-2">
+//                     <div>
+//                       <h4 className="font-medium text-gray-900">
+//                         {batch.user.name}
+//                       </h4>
+//                       <p className="text-sm text-gray-600">
+//                         {batch.user.email}
+//                       </p>
+//                     </div>
+//                     <Badge variant="outline" className="capitalize">
+//                       {batch.user.role?.toLowerCase()}
+//                     </Badge>
+//                   </div>
+//                 </CardContent>
+//               </Card>
+//             )}
+
+//             {/* Notes */}
+//             {batch.notes && (
+//               <Card>
+//                 <CardHeader>
+//                   <CardTitle>Notes</CardTitle>
+//                 </CardHeader>
+//                 <CardContent>
+//                   <p className="text-sm text-gray-600">{batch.notes}</p>
+//                 </CardContent>
+//               </Card>
+//             )}
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default BatchDetailsPage;
+
+const BatchDetailsPage = () => {
   return (
-    <div className="space-y-6 container max-w-7xl mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/supply-chain/batches">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Batches
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">{batch.batchNumber}</h1>
-            <p className="text-muted-foreground">
-              {batch.species} • {batch.commonName}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Share className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Link href={`/dashboard/supply-chain/batches/${batch.id}/edit`}>
-            <Button variant="outline" size="sm">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          </Link>
-          <Link href={`/trace/${batch.batchNumber}`}>
-            <Button>
-              <Eye className="h-4 w-4 mr-2" />
-              Public View
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Fish className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Current Stage
-                    </p>
-                    <p className="font-medium capitalize">
-                      {batch.currentStage}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <ShieldCheck className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <p className="font-medium capitalize">{batch.status}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Eye className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Views</p>
-                    <p className="font-medium">{batch.views || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Star className="h-5 w-5 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Rating</p>
-                    <p className="font-medium">{averageRating.toFixed(1)}/5</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Supply Chain Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Supply Chain Timeline</CardTitle>
-              <CardDescription>
-                Track the journey of this batch through the supply chain
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {Object.values(SupplyChainStage).map((stage) => {
-                  const status = getStageStatus(stage);
-                  const stageData = batch.stages.find((s) => s.stage === stage);
-
-                  return (
-                    <div key={stage} className="flex items-start gap-4">
-                      <div className="flex flex-col items-center">
-                        {getStageIcon(status)}
-                        {stage !== SupplyChainStage.SOLD && (
-                          <div
-                            className={`w-px h-8 mt-2 ${
-                              status === "completed"
-                                ? "bg-green-200"
-                                : "bg-gray-200"
-                            }`}
-                          />
-                        )}
-                      </div>
-
-                      <div className="flex-1 pb-6">
-                        <div className="flex items-center justify-between">
-                          <h3
-                            className={`font-medium capitalize ${
-                              status === "current"
-                                ? "text-blue-600"
-                                : status === "completed"
-                                  ? "text-green-600"
-                                  : "text-gray-500"
-                            }`}
-                          >
-                            {stage}
-                          </h3>
-                          {stageData && (
-                            <Badge
-                              variant={
-                                stageData.verified ? "default" : "secondary"
-                              }
-                            >
-                              {stageData.verified
-                                ? "Verified"
-                                : "Pending Verification"}
-                            </Badge>
-                          )}
-                        </div>
-
-                        {stageData ? (
-                          <div className="mt-2 space-y-2">
-                            <div className="text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                {formatDateTime(stageData.timestamp)}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <User className="h-4 w-4" />
-                                {stageData.operator.name} (
-                                {stageData.operator.organization})
-                              </div>
-                              {stageData.blockchainTxHash && (
-                                <div className="flex items-center gap-2 mt-1">
-                                  <ShieldCheck className="h-4 w-4" />
-                                  Blockchain verified
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {status === "current"
-                              ? "In progress..."
-                              : "Pending"}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Detailed Information Tabs */}
-          <Tabs defaultValue="source" className="w-full">
-            <TabsList>
-              <TabsTrigger value="source">Source Info</TabsTrigger>
-              <TabsTrigger value="stages">Stage Details</TabsTrigger>
-              <TabsTrigger value="quality">Quality Metrics</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="ratings">Ratings</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="source">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Source Information</CardTitle>
-                  <CardDescription>
-                    {batch.productType === ProductType.WILD_CAPTURE
-                      ? "Harvest details"
-                      : "Farm details"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {batch.productType === ProductType.WILD_CAPTURE &&
-                    batch.harvest && (
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <h4 className="font-medium mb-3">
-                              Harvest Details
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Method:
-                                </span>{" "}
-                                {batch.harvest.method}
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Gear Type:
-                                </span>{" "}
-                                {batch.harvest.gearType}
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Date:
-                                </span>{" "}
-                                {formatDateTime(batch.harvest.harvestDate)}
-                              </div>
-                            </div>
-                          </div>
-
-                          {batch.harvest.vesselInfo && (
-                            <div>
-                              <h4 className="font-medium mb-3">
-                                Vessel Information
-                              </h4>
-                              <div className="space-y-2 text-sm">
-                                <div>
-                                  <span className="text-muted-foreground">
-                                    Name:
-                                  </span>{" "}
-                                  {batch.harvest.vesselInfo.name}
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">
-                                    Registration:
-                                  </span>{" "}
-                                  {batch.harvest.vesselInfo.registration}
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">
-                                    Captain:
-                                  </span>{" "}
-                                  {batch.harvest.vesselInfo.captain}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <h4 className="font-medium mb-3">Location</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Name:
-                                </span>{" "}
-                                {batch.harvest.location.name}
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Region:
-                                </span>{" "}
-                                {batch.harvest.location.region}
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Water Body:
-                                </span>{" "}
-                                {batch.harvest.location.waterBodyType}
-                              </div>
-                            </div>
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">
-                                  Coordinates:
-                                </span>{" "}
-                                {batch.harvest.location.coordinates.latitude.toFixed(
-                                  4
-                                )}
-                                ,{" "}
-                                {batch.harvest.location.coordinates.longitude.toFixed(
-                                  4
-                                )}
-                              </div>
-                              {batch.harvest.location.description && (
-                                <div>
-                                  <span className="text-muted-foreground">
-                                    Description:
-                                  </span>{" "}
-                                  {batch.harvest.location.description}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {batch.harvest.waterConditions && (
-                          <div>
-                            <h4 className="font-medium mb-3">
-                              Water Conditions
-                            </h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              {Object.entries(
-                                batch.harvest.waterConditions
-                              ).map(([key, value]) => (
-                                <div
-                                  key={key}
-                                  className="text-center p-3 bg-gray-50 rounded-lg"
-                                >
-                                  <div className="text-lg font-bold">
-                                    {value}
-                                  </div>
-                                  <div className="text-sm text-muted-foreground capitalize">
-                                    {key}
-                                    {key === "temperature" && " °C"}
-                                    {key === "salinity" && " ppt"}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {batch.harvest.permits &&
-                          batch.harvest.permits.length > 0 && (
-                            <div>
-                              <h4 className="font-medium mb-3">
-                                Permits & Licenses
-                              </h4>
-                              <div className="space-y-2">
-                                {batch.harvest.permits.map((permit, index) => (
-                                  <div
-                                    key={index}
-                                    className="p-3 border rounded-lg"
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <div className="font-medium">
-                                          {permit.type}
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                          {permit.number}
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                          Issued by: {permit.issuer}
-                                        </div>
-                                      </div>
-                                      <Badge
-                                        variant={
-                                          new Date(permit.validUntil) >
-                                          new Date()
-                                            ? "default"
-                                            : "destructive"
-                                        }
-                                      >
-                                        Valid until{" "}
-                                        {formatDate(permit.validUntil)}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                      </div>
-                    )}
-
-                  {batch.productType === ProductType.FARMED && batch.farm && (
-                    <div className="space-y-6">
-                      {/* Farm details would go here */}
-                      <p className="text-muted-foreground">
-                        Farm information not available for this batch.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="stages" className="space-y-4">
-              {batch.stages.map((stage, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg capitalize">
-                        {stage.stage} Stage
-                      </CardTitle>
-                      <Badge variant={stage.verified ? "default" : "secondary"}>
-                        {stage.verified ? "Verified" : "Pending Verification"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="font-medium mb-3">
-                          Operator Information
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Name:</span>{" "}
-                            {stage.operator.name}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">
-                              Organization:
-                            </span>{" "}
-                            {stage.operator.organization}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Role:</span>{" "}
-                            {stage.operator.role}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">
-                              Timestamp:
-                            </span>{" "}
-                            {formatDateTime(stage.timestamp)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium mb-3">Stage Details</h4>
-                        <div className="space-y-2 text-sm">
-                          {Object.entries(stage.details).map(([key, value]) => (
-                            <div key={key}>
-                              <span className="text-muted-foreground capitalize">
-                                {key.replace(/([A-Z])/g, " $1").toLowerCase()}:
-                              </span>{" "}
-                              {typeof value === "object"
-                                ? JSON.stringify(value)
-                                : String(value)}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </TabsContent>
-
-            <TabsContent value="quality" className="space-y-4">
-              {batch.stages
-                .filter((stage) => stage.qualityMetrics)
-                .map((stage, index) => (
-                  <Card key={index}>
-                    <CardHeader>
-                      <CardTitle className="text-lg capitalize">
-                        {stage.stage} Quality Metrics
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-3 bg-gray-50 rounded-lg">
-                          <div className="text-2xl font-bold">
-                            {stage.qualityMetrics?.appearance}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Appearance /10
-                          </div>
-                        </div>
-                        <div className="text-center p-3 bg-gray-50 rounded-lg">
-                          <div className="text-2xl font-bold">
-                            {stage.qualityMetrics?.freshness}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Freshness /10
-                          </div>
-                        </div>
-                        <div className="text-center p-3 bg-gray-50 rounded-lg">
-                          <div className="text-2xl font-bold">
-                            {stage.qualityMetrics?.weight.totalKg}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Total Weight (kg)
-                          </div>
-                        </div>
-                        <div className="text-center p-3 bg-gray-50 rounded-lg">
-                          <div className="text-2xl font-bold">
-                            {stage.qualityMetrics?.size?.average}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Avg Size ({stage.qualityMetrics?.size?.unit})
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-            </TabsContent>
-
-            <TabsContent value="documents">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Documents & Certificates</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {batch.stages.flatMap((stage) =>
-                      stage.documents.map((doc, index) => (
-                        <div
-                          key={`${stage.stage}-${index}`}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-gray-500" />
-                            <div>
-                              <div className="font-medium">{doc.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {stage.stage} stage • {doc.type} • IPFS:{" "}
-                                {doc.hash.slice(0, 20)}...
-                              </div>
-                            </div>
-                          </div>
-                          <Button variant="outline" size="sm" asChild>
-                            <a
-                              href={doc.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              View
-                            </a>
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="ratings">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer Ratings & Reviews</CardTitle>
-                  <CardDescription>
-                    Average rating: {averageRating.toFixed(1)}/5 (
-                    {batch.ratings?.length || 0} reviews)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {batch.ratings?.map((rating, index) => (
-                      <div key={index} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`h-4 w-4 ${
-                                    i < rating.rating
-                                      ? "text-yellow-400 fill-current"
-                                      : "text-gray-300"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            {rating.verifiedPurchase && (
-                              <Badge variant="outline" className="text-xs">
-                                Verified Purchase
-                              </Badge>
-                            )}
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            {formatDate(rating.date)}
-                          </span>
-                        </div>
-                        {rating.comment && (
-                          <p className="text-sm text-gray-600">
-                            {rating.comment}
-                          </p>
-                        )}
-                      </div>
-                    )) || (
-                      <p className="text-muted-foreground">No ratings yet.</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Basic Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Batch Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium">Product Type</h4>
-                <Badge variant="outline" className="mt-1 capitalize">
-                  {batch.productType.replace("-", " ")}
-                </Badge>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Category</h4>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {batch.category}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Status</h4>
-                <Badge
-                  className={`mt-1 capitalize ${
-                    batch.status === "active"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {batch.status}
-                </Badge>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-medium">Created</h4>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(batch.createdAt)}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium">Last Updated</h4>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(batch.updatedAt)}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* QR Code */}
-          <Card>
-            <CardHeader>
-              <CardTitle>QR Code</CardTitle>
-              <CardDescription>
-                Scan to view public trace information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <QRGenerator productId={batch.batchNumber} />
-              <Button variant="outline" size="sm" className="mt-4 w-full">
-                <Download className="h-4 w-4 mr-2" />
-                Download QR Code
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Tags */}
-          {batch.tags && batch.tags.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Tags</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {batch.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Notes */}
-          {batch.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">{batch.notes}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    <div>Can't view batch now</div>
+  )
 }
+
+export default BatchDetailsPage

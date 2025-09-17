@@ -1,5 +1,14 @@
 import z from "zod";
 
+const labTestSchema = z.object({
+  testType: z.string().optional(),
+  results: z.string().optional(),
+  units: z.string().optional(),
+  testDate: z.string().datetime().optional(), // or z.coerce.date() if you want Date objects
+  laboratoryName: z.string().optional(),
+  referenceValues: z.string().optional(),
+});
+
 export const samplingSchema = z.object({
   // Required fields
   samplingId: z.string().min(1, "Sampling ID is required"),
@@ -39,7 +48,7 @@ export const samplingSchema = z.object({
   }),
 
   // Optional fields
-  labTests: z.array(z.string()).optional().default([]),
+  labTests: z.array(labTestSchema).optional().default([]),
   fileHashes: z.array(z.string()).optional().default([]),
   researcherNotes: z.string().optional(),
 });

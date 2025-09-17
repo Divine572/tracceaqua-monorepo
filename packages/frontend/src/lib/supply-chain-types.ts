@@ -219,3 +219,125 @@ export interface SupplyChainBatch {
     verifiedPurchase: boolean
   }[]
 }
+
+
+export interface SupplyChainResponse {
+  data: SupplyChainRecord[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface SupplyChainRecord {
+  id: string;
+  productId: string;
+  userId: string;
+  batchId: string;
+  sourceType: string;
+  speciesName: string;
+  productName: string;
+  productDescription: string;
+  currentStage: string;
+  status: string;
+  isPublic: boolean;
+  hatcheryData: HatcheryData;
+  growOutData: GrowOutData;
+  fishingData: FishingData;
+  harvestData: HarvestData;
+  processingData: ProcessingData;
+  storageData: StorageData;
+  transportData: TransportData;
+  fileHashes: string[];
+  dataHash: string;
+  blockchainHash: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  user: Record<string, unknown>; // replace with proper User type if available
+  stageHistory: StageHistory[];
+  feedbackCount: number;
+  averageRating: number;
+}
+
+export interface HatcheryData {
+  speciesSpawned: string;
+  eggCount: number;
+  spawningDate: string;
+  waterTemperature: number;
+  salinity: number;
+  feedType: string;
+  survivalRate: number;
+}
+
+export interface GrowOutData {
+  growingLocation: string;
+  stockingDensity: number;
+  growthPeriod: number;
+  feedConversionRatio: number;
+  waterQuality: Record<string, unknown>;
+  diseaseTreatments: string[];
+}
+
+export interface FishingData {
+  fishingMethod: string;
+  coordinates: Record<string, unknown>;
+  waterDepth: number;
+  vesselDetails: Record<string, unknown>;
+  catchComposition: Record<string, unknown>[];
+  seaConditions: string;
+}
+
+export interface HarvestData {
+  harvestMethod: string;
+  harvestLocation: string;
+  totalWeight: number;
+  pieceCount: number;
+  averageSize: number;
+  qualityGrade: string;
+  postHarvestHandling: string;
+}
+
+export interface ProcessingData {
+  facilityName: string;
+  processingMethod: string;
+  processingDate: string;
+  inputWeight: number;
+  outputWeight: number;
+  processingYield: number;
+  qualityTests: Record<string, unknown>[];
+  packaging: Record<string, unknown>;
+}
+
+export interface StorageData {
+  storageFacility: string;
+  storageTemperature: number;
+  storageMethod: string;
+  storageDuration: number;
+  humidityLevel: number;
+  qualityChecks: Record<string, unknown>[];
+}
+
+export interface TransportData {
+  transportMethod: string;
+  vehicleDetails: Record<string, unknown>;
+  originLocation: string;
+  destinationLocation: string;
+  transportTemperature: number;
+  transportDuration: number;
+  coldChainMonitoring: Record<string, unknown>[];
+}
+
+export interface StageHistory {
+  id: string;
+  stage: string;
+  userId: string;
+  timestamp: string; // ISO date string
+  data: Record<string, unknown>;
+  location: string;
+  notes: string;
+  fileHashes: string[];
+  blockchainHash: string;
+  user: Record<string, unknown>;
+}

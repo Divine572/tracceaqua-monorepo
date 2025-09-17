@@ -18,14 +18,12 @@ import {
   Users,
   Waves,
   ChevronRight,
-  Fish,
   Microscope,
   Truck,
 } from "lucide-react";
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { toast } from "sonner";
 import useAuthStore from "@/stores/auth-store";
-import { useCookies } from "react-cookie";
 import Cookies from "universal-cookie";
 
 export default function Home() {
@@ -33,24 +31,18 @@ export default function Home() {
 
   const router = useRouter();
 
-  const { setSignature, setWalletAddress, walletAddress, email, signature } =
+  const { setSignature, email } =
     useAuthStore();
   const { setUser } = useAuthStore();
 
-  // const [,setCookie] = useCookies(["user-token"])
   const cookie = new Cookies();
 
   const message =
     "Welcome to TracceAqua! This request will not trigger a blockchain transaction...";
 
   useEffect(() => {
-    console.log(user);
-    // if (user !== undefined) return;
-
-    console.log(primaryWallet);
 
     const userToken = cookie.get("user-token");
-    console.log("userToken:", userToken);
 
     if (userToken && userToken !== "undefined" && userToken !== "null") {
       return;
@@ -154,7 +146,9 @@ export default function Home() {
   }, [primaryWallet, user, email, router, message]);
 
   const onBoarding = () => {
-    if (user) {
+    const userToken = cookie.get("user-token")
+
+    if (userToken && primaryWallet) {
       router.push("/dashboard");
     } else {
       router.push("/auth/onboarding");
@@ -177,7 +171,7 @@ export default function Home() {
 
           <h1 className="text-4xl md:text-6xl font-bold mb-6 text-foreground">
             Welcome to{" "}
-            <span className="tracce-gradient bg-clip-text text-transparent">
+            <span className="bg-clip-text">
               TracceAqua
             </span>
           </h1>

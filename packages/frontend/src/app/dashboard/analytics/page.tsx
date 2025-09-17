@@ -1,4 +1,5 @@
-import { AnalyticsDashboard } from "@/components/dashboard/DashboardHome";
+// import { AnalyticsDashboard } from "@/components/dashboard/DashboardHome";
+import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 // import { AuthGuard } from '@/components/auth/auth-guard'
 // import { RoleGuard } from '@/components/auth/role-guard'
 import { UserRole } from "@/lib/types";

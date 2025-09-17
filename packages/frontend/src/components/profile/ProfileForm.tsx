@@ -1,37 +1,47 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { useAuth } from '@/hooks/use-auth'
-import { useToast } from '@/hooks/use-toast'
-import { Loader2, Upload } from 'lucide-react'
-import { toast } from 'sonner'
-import { User } from '@/lib/types'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2, Upload } from "lucide-react";
+import { toast } from "sonner";
+import { User } from "@/lib/types";
+import useAuthStore from "@/stores/auth-store";
 
 const profileSchema = z.object({
-  firstName: z.string().min(2, 'First name must be at least 2 characters'),
-  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
   organization: z.string().optional(),
-  phone: z.string().optional(),
+  website: z.string().optional(),
+  phoneNumber: z.string().optional(),
   location: z.string().optional(),
-  bio: z.string().max(500, 'Bio must be less than 500 characters').optional(),
-})
+  bio: z.string().max(500, "Bio must be less than 500 characters").optional(),
+});
 
-type ProfileFormData = z.infer<typeof profileSchema>
+type ProfileFormData = z.infer<typeof profileSchema>;
 
-export function ProfileForm({userData}: {userData: User | null}) {
-  const { user } = useAuth()
-  // const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+export function ProfileForm({ userData }: { userData: User | null }) {
+  const { user } = useAuth();
+  const {setUser} = useAuthStore()
+  const [isLoading, setIsLoading] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  const router = useRouter()
 
   const {
     register,
@@ -40,41 +50,57 @@ export function ProfileForm({userData}: {userData: User | null}) {
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      firstName: user?.profile?.firstName || '',
-      lastName: user?.profile?.lastName || '',
-      organization: user?.profile?.organization || '',
-      phone: user?.profile?.phoneNumber || '',
-      location: user?.profile?.location || '',
-      bio: user?.profile?.bio || '',
+      firstName: user?.profile?.firstName || "",
+      lastName: user?.profile?.lastName || "",
+      organization: user?.profile?.organization || "",
+      website: "",
+      phoneNumber: user?.profile?.phoneNumber || "",
+      location: user?.profile?.location || "",
+      bio: user?.profile?.bio || "",
     },
-  })
+  });
 
   const onSubmit = async (data: ProfileFormData) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       // TODO: Implement API call to update profile
-      console.log('Profile data:', data)
-      console.log('Avatar file:', avatarFile)
+      console.log("Profile data:", data);
+      console.log("Avatar file:", avatarFile);
 
-      toast.success("Your Profile has been successfully updated")
+      const response = await fetch("/api/auth/profile/update", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      })
+
+      if(!response.ok) throw new Error("Failed to update your profile")
       
-    } catch (error) {
-      toast.success("Failed to update profile. Please try again.")
+      const result = await response.json()
+      setUser(result.data.data)
+
+      toast.success("Your Profile has been successfully updated");
+      router.refresh()
+    } catch (error) {      
+      toast.error("Failed to update profile. Please try again.");
+
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0];
     if (file) {
-      setAvatarFile(file)
+      setAvatarFile(file);
     }
-  }
+  };
 
-  const userInitials = user?.name 
-    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase()
-    : user?.email?.[0]?.toUpperCase() || '??'
+  const userInitials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+    : user?.email?.[0]?.toUpperCase() || "??";
 
   return (
     <Card>
@@ -89,9 +115,13 @@ export function ProfileForm({userData}: {userData: User | null}) {
           {/* Avatar Section */}
           <div className="flex items-center space-x-4">
             <Avatar className="h-20 w-20">
-              <AvatarImage 
-                src={avatarFile ? URL.createObjectURL(avatarFile) : user?.image || user?.profile?.profileImage!} 
-                alt="Profile picture" 
+              <AvatarImage
+                src={
+                  avatarFile
+                    ? URL.createObjectURL(avatarFile)
+                    : user?.image || user?.profile?.profileImage!
+                }
+                alt="Profile picture"
               />
               <AvatarFallback className="tracce-gradient text-white text-xl">
                 {userInitials}
@@ -123,7 +153,7 @@ export function ProfileForm({userData}: {userData: User | null}) {
               <Label htmlFor="firstName">First Name</Label>
               <Input
                 id="firstName"
-                {...register('firstName')}
+                {...register("firstName")}
                 // error={errors.firstName?.message}
               />
             </div>
@@ -131,21 +161,33 @@ export function ProfileForm({userData}: {userData: User | null}) {
               <Label htmlFor="lastName">Last Name</Label>
               <Input
                 id="lastName"
-                {...register('lastName')}
+                {...register("lastName")}
                 // error={errors.lastName?.message}
               />
             </div>
           </div>
 
-          {/* Organization */}
-          <div className="space-y-2">
-            <Label htmlFor="organization">Organization (Optional)</Label>
-            <Input
-              id="organization"
-              placeholder="Your company or organization"
-              {...register('organization')}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="organization">Organization (Optional)</Label>
+              <Input
+                id="organization"
+                placeholder="Your company or organization"
+                {...register("organization")}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="organization">Website (Optional)</Label>
+              <Input
+                id="organization"
+                placeholder="Your company or personal website"
+                {...register("website")}
+              />
+            </div>
           </div>
+
+          {/* Organization */}
 
           {/* Contact Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -155,7 +197,7 @@ export function ProfileForm({userData}: {userData: User | null}) {
                 id="phone"
                 type="tel"
                 placeholder="+234 xxx xxxx xxx"
-                {...register('phone')}
+                {...register("phoneNumber")}
               />
             </div>
             <div className="space-y-2">
@@ -163,7 +205,7 @@ export function ProfileForm({userData}: {userData: User | null}) {
               <Input
                 id="location"
                 placeholder="City, State"
-                {...register('location')}
+                {...register("location")}
               />
             </div>
           </div>
@@ -175,7 +217,7 @@ export function ProfileForm({userData}: {userData: User | null}) {
               id="bio"
               placeholder="Tell us about yourself..."
               className="min-h-[100px]"
-              {...register('bio')}
+              {...register("bio")}
             />
             {errors.bio && (
               <p className="text-sm text-destructive">{errors.bio.message}</p>
@@ -194,11 +236,11 @@ export function ProfileForm({userData}: {userData: User | null}) {
                 Updating...
               </>
             ) : (
-              'Update Profile'
+              "Update Profile"
             )}
           </Button>
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
