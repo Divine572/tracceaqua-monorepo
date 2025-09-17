@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       throw new Error();
     }
 
-    return NextResponse.json({ success: true, data: response.data });
+    return NextResponse.json({ data: response.data });
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       console.error("Axios error:", error.response?.data || error.message);

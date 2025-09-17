@@ -20,13 +20,13 @@ export function useBatches({
     queryKey: ["batches", searchTerm, stageFilter, statusFilter],
     queryFn: async (): Promise<SupplyChainRecord[]> => {
       const response =
-        await axios.get<SupplyChainResponse>("/api/supply-chain/create-batch");
+        await axios.get("/api/supply-chain/create-batch");
         console.log(response.data)
-      const records = response.data.data;
+      const records = response.data.data.data.data;
 
       console.log(records);
 
-      return records.filter((batch) => {
+      return records.filter((batch: any) => {
         const matchesSearch =
           !searchTerm ||
           batch.productId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,6 +42,7 @@ export function useBatches({
         return matchesSearch && matchesStage && matchesStatus;
       });
     },
+    refetchOnWindowFocus: false,
   });
 
   return {batches, isLoading}

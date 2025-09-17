@@ -146,7 +146,9 @@ export default function Home() {
   }, [primaryWallet, user, email, router, message]);
 
   const onBoarding = () => {
-    if (user) {
+    const userToken = cookie.get("user-token")
+
+    if (userToken && primaryWallet) {
       router.push("/dashboard");
     } else {
       router.push("/auth/onboarding");

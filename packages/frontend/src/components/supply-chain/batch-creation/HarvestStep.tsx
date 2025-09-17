@@ -1,69 +1,158 @@
-import { useForm, useFormContext } from "react-hook-form";
-import { z } from "zod";
-
+import { useFormContext } from "react-hook-form";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { batchCreationSchema } from "@/zod/schemas/batch-creation-schema";
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectItem,
+  SelectValue,
+  SelectContent,
+  SelectTrigger,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { PackageCheck } from "lucide-react";
 
-type BatchCreationData = z.infer<typeof batchCreationSchema>;
-
-export default function HarvestStep() {
-  const { register } = useFormContext<BatchCreationData>();
-  
+const HarvestStep = () => {
+  const { register, watch, control } = useFormContext();
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Harvest Data</CardTitle>
-        <CardDescription>Harvest and collection information</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Harvest Method</label>
-            <input {...register("harvestData.harvestMethod")} className="w-full p-2 border rounded-md" />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium">Harvest Location</label>
-            <input {...register("harvestData.harvestLocation")} className="w-full p-2 border rounded-md" />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium">Total Weight (kg)</label>
-            <input type="number" step="0.1" {...register("harvestData.totalWeight", { valueAsNumber: true })} className="w-full p-2 border rounded-md" />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium">Piece Count</label>
-            <input type="number" {...register("harvestData.pieceCount", { valueAsNumber: true })} className="w-full p-2 border rounded-md" />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium">Average Size</label>
-            <input type="number" step="0.1" {...register("harvestData.averageSize", { valueAsNumber: true })} className="w-full p-2 border rounded-md" />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium">Quality Grade</label>
-            <select {...register("harvestData.qualityGrade")} className="w-full p-2 border rounded-md">
-              <option value="">Select grade</option>
-              <option value="Grade A">Grade A</option>
-              <option value="Grade B">Grade B</option>
-              <option value="Grade C">Grade C</option>
-            </select>
-          </div>
+    <div className="space-y-6">
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <PackageCheck className="w-8 h-8 text-green-600" />
         </div>
-        
-        <div>
-          <label className="text-sm font-medium">Post-Harvest Handling</label>
-          <textarea {...register("harvestData.postHarvestHandling")} className="w-full p-2 border rounded-md" rows={2} />
-        </div>
-      </CardContent>
-    </Card>
+        <h2 className="text-2xl font-bold">
+          Harvest Information
+        </h2>
+        <p className="text-gray-600 mt-2">
+          Enter details about the harvest process
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <FormField
+          control={control}
+          name="harvestMethod"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Harvest Method</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g., Net harvesting, Seine nets"
+                  {...field}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="harvestLocation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Harvest Location</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Lagos Fish Farm, Pond 3" {...field} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="totalWeight"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Total Weight (kg)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g., 500"
+                  {...field}
+                  type="number"
+                  step="0.1"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="pieceCount"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Piece Count</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., 100" {...field} type="number" />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="averageSize"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Average Size (cm)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g., 35.5"
+                  {...field}
+                  type="number"
+                  step="0.1"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="qualityGrade"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Quality Grade</FormLabel>
+              <FormControl>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select quality grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Premium">Premium</SelectItem>
+                    <SelectItem value="Grade A">Grade A</SelectItem>
+                    <SelectItem value="Grade B">Grade B</SelectItem>
+                    <SelectItem value="Commercial">Commercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <FormField
+        control={control}
+        name="postHarvestHandling"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Post-Harvest Handling</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="Describe post-harvest handling procedures..."
+                {...field}
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+    </div>
   );
-}
+};
+
+export default HarvestStep;

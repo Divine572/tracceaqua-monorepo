@@ -11,11 +11,19 @@ import {
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
+import Cookies from "universal-cookie";
 import { GoogleSignInButton } from "../auth/GoogleSignInButton";
 // import { WalletConnectButton } from "../auth/WalletConnectButton";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
+import {
+  DynamicWidget,
+  DynamicContext,
+  useDynamicContext,
+} from "@dynamic-labs/sdk-react-core";
+import { email } from "zod";
+import { toast } from "sonner";
+import useAuthStore from "@/stores/auth-store";
 
 interface OnboardingScreen {
   id: number;
@@ -67,13 +75,63 @@ export function OnboardingFlow() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const { user, primaryWallet } = useDynamicContext();
+
+  const { setUser } = useAuthStore();
+
+  const cookie = new Cookies();
+
+  const message =
+    "Welcome to TracceAqua! This request will not trigger a blockchain transaction...";
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/dashboard");
+    const userToken = cookie.get("user-token");
+
+    if (userToken) return
+
+    if (primaryWallet) {
+      console.log(primaryWallet)
+      const loginUser = async () => {
+        const signature = await primaryWallet.signMessage(message);
+
+        const userData = {
+          email: user?.email ? email : "",
+          address: primaryWallet.address,
+          signature: signature,
+          message: message,
+        };
+
+        try {
+          const response = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(userData),
+          });
+
+          if (!response.ok)
+            throw new Error("Failed to register user. Please try again");
+
+          const responseData = await response.json();
+          const data = responseData.data;
+          console.log(data);
+          cookie.set("user-token", data.data.accessToken, {
+            path: "/",
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            secure: true,
+            sameSite: "strict",
+          });
+          const savedUser = data.data.user;
+          setUser(savedUser);
+          toast.success("Signing successful");
+          router.push("/dashboard");
+        } catch (error) {
+          toast.error("Failed to register user. Please try again");
+        }
+      };
+      loginUser();
     }
-  }, [isAuthenticated, router]);
+  }, [primaryWallet]);
 
   const nextScreen = () => {
     if (currentScreen < screens.length - 1) {
@@ -171,26 +229,9 @@ export function OnboardingFlow() {
           {/* Authentication buttons for last screen */}
           {currentScreenData.showConnectButton && (
             <div className="max-w-sm mx-auto space-y-3">
-              {/* <WalletConnectButton 
-                onSuccess={handleWalletSuccess}
-                className="w-full bg-white/95 backdrop-blur-sm border-white/20 text-blue-600 hover:bg-white"
-              /> */}
               <div className="flex justify-center">
                 <DynamicWidget />
               </div>
-              {/* <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/30" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-transparent px-2 text-white/70">or</span>
-                </div>
-              </div> */}
-              {/* <GoogleSignInButton 
-                onSuccess={handleWalletSuccess}
-                className="w-full bg-white/95 backdrop-blur-sm border-white/20 text-blue-600 hover:bg-white"
-                variant="outline"
-              /> */}
             </div>
           )}
         </div>
