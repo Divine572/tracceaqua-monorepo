@@ -57,13 +57,19 @@ export async function GET(req: NextRequest) {
 
   const userToken = (await cookieStore).get("user-token")?.value;
 
+  const {searchParams} = new URL(req.url)
+  const productId = searchParams.get("productId")
+
   try {
     const response = await axios.get(
       `${process.env.BACKEND_URL_DEV}/supply-chain`,
       {
         headers: {
-          Authorization: `Bearer ${userToken}`
+          Authorization: `Bearer ${userToken}`,
         },
+        params: {
+          productId
+        }
       }
     );
 

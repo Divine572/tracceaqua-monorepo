@@ -138,7 +138,7 @@ const BatchOverviewTable: FC<BatchOverviewTableProps> = ({
                 <TableCell className="font-medium">
                   <Link
                     href={`/dashboard/supply-chain/batches/${batch.id}`}
-                    className="text-primary hover:underline sm:truncate"
+                    className="text-primary hover:underline"
                   >
                     {batch.id}
                   </Link>

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Cookies from "universal-cookie";
 import { useParams } from "next/navigation";
-import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,100 +13,88 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import { Download, Share, Copy, QrCode } from "lucide-react";
 import { cn } from "@/lib/utils";
-import axios from "axios";
+import { toast } from "sonner";
 
 interface QRGeneratorProps {
   productId?: string;
   batchId?: string;
   className?: string;
+  displayName?: string;
 }
 
 export function QRGenerator({
   productId,
   batchId,
   className,
+  displayName,
 }: QRGeneratorProps) {
   const [qrData, setQrData] = useState("");
   const [qrSize, setQrSize] = useState(256);
   const [qrLevel, setQrLevel] = useState<"L" | "M" | "Q" | "H">("M");
-  const { toast } = useToast();
+  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
+  const [traceUrl, setTraceUrl] = useState<string | null>(null);
 
-  const {params} = useParams()
+  const cookie = new Cookies();
 
-  // const slug = params.slug
-  console.log(params)
+  const userToken = cookie.get("user-token");
 
-  // Generate QR data URL
-  const generateQRData = (id: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    return `${baseUrl}/trace/${id}`;
+  const generateQrCode = async (id: string | undefined) => {
+    console.log(id);
+
+    if (!id) return;
+
+    const qrCodeData = {
+      qrType: "trace",
+      displayName: displayName,
+      expiryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+    };
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/supply-chain/public/qr/${productId}`,
+        {
+          method: "POST",
+          body: JSON.stringify(qrCodeData),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error();
+
+      const result = await response.json();
+      const data = result.data;
+      setTraceUrl(data.tracingUrl);
+      setQrCodeImage(data.qrCodeImage);
+      console.log("url: ", traceUrl)
+      console.log("img: ", qrCodeImage)
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   // Initialize QR data
   useEffect(() => {
-    if (productId) {
-      setQrData(generateQRData(productId));
-    } else if (batchId) {
-      setQrData(generateQRData(batchId));
-    }
-  }, [productId, batchId]);
-
-  const handleCustomQR = (customId: string) => {
-    if (customId.trim()) {
-      setQrData(generateQRData(customId.trim()));
-    }
-  };
-
-  const downloadQR = () => {
-    const svg = document.getElementById("qr-code-svg");
-    if (!svg) return;
-
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-
-    canvas.width = qrSize;
-    canvas.height = qrSize;
-
-    img.onload = () => {
-      ctx?.drawImage(img, 0, 0);
-      const link = document.createElement("a");
-      link.download = `tracceaqua-qr-${Date.now()}.png`;
-      link.href = canvas.toDataURL();
-      link.click();
-    };
-
-    img.src = "data:image/svg+xml;base64," + btoa(svgData);
-  };
+    if (productId) generateQrCode(productId);
+  }, [productId]);
 
   const copyQRUrl = async () => {
+    if (!traceUrl) return;
     try {
-      await navigator.clipboard.writeText(qrData);
-      toast({
-        title: "Copied!",
-        description: "QR code URL copied to clipboard.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to copy URL to clipboard.",
-        variant: "destructive",
-      });
+      await navigator.clipboard.writeText(traceUrl);
+      toast.success("QR code URL copied to clipboard");
+    } catch {
+      toast.success("Failed to copy url");
     }
   };
 
   const shareQR = async () => {
+    if (!traceUrl) return;
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -122,10 +110,6 @@ export function QRGenerator({
     }
   };
 
-  const generateQrCode = async () => {
-    const response = await axios.post("/api/v1/supply-chain/public/qr/{productId}")
-  }
-
   return (
     <Card className={cn("w-full max-w-lg", className)}>
       <CardHeader>
@@ -139,91 +123,53 @@ export function QRGenerator({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Custom Product ID Input */}
-        {!productId && !batchId && (
-          // <div className="space-y-2">
-          //   <Label htmlFor="productId">Product/Batch ID</Label>
-          //   <Input
-          //     id="productId"
-          //     placeholder="Enter product or batch ID"
-          //     onChange={(e) => handleCustomQR(e.target.value)}
-          //   />
-          // </div>
+        {!qrCodeImage && (
           <div className="text-center">
-            <Button>Generator QR code</Button>
+            <Button onClick={() => generateQrCode(productId || undefined)}>
+              Generate QR code
+            </Button>
           </div>
         )}
 
         {/* QR Code Display */}
-        {qrData && (
-          <div className="space-y-4">
-            <div className="flex justify-center p-6 bg-white rounded-lg border">
-              <QRCode
-                id="qr-code-svg"
-                value={qrData}
-                size={qrSize}
-                level={qrLevel}
-                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-              />
-            </div>
+        {qrCodeImage && (
+          <div className="space-y-4 text-center">
+            <img
+              src={qrCodeImage}
+              alt="QR Code"
+              className="mx-auto rounded-lg border bg-white p-4"
+            />
 
-            {/* QR Configuration */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="size">Size</Label>
-                <Select
-                  value={qrSize.toString()}
-                  onValueChange={(value) => setQrSize(Number(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="128">128px</SelectItem>
-                    <SelectItem value="256">256px</SelectItem>
-                    <SelectItem value="512">512px</SelectItem>
-                    <SelectItem value="1024">1024px</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="level">Error Correction</Label>
-                <Select
-                  value={qrLevel}
-                  onValueChange={(value) =>
-                    setQrLevel(value as "L" | "M" | "Q" | "H")
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="L">Low (7%)</SelectItem>
-                    <SelectItem value="M">Medium (15%)</SelectItem>
-                    <SelectItem value="Q">Quartile (25%)</SelectItem>
-                    <SelectItem value="H">High (30%)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* URL Display */}
+            {/* Trace URL */}
             <div className="space-y-2">
               <Label>Trace URL</Label>
               <div className="flex items-center space-x-2">
-                <Input value={qrData} readOnly className="font-mono text-sm" />
+                <Input
+                  value={traceUrl || ""}
+                  readOnly
+                  className="font-mono text-sm"
+                />
                 <Button size="icon" variant="outline" onClick={copyQRUrl}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button onClick={downloadQR} className="flex-1">
+              <Button
+                onClick={() => {
+                  if (!qrCodeImage) return;
+                  const link = document.createElement("a");
+                  link.href = qrCodeImage;
+                  link.download = `tracceaqua-qr-${Date.now()}.png`;
+                  link.click();
+                }}
+                className="flex-1"
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Download PNG
               </Button>
+
               <Button onClick={shareQR} variant="outline" className="flex-1">
                 <Share className="h-4 w-4 mr-2" />
                 Share
