@@ -1,40 +1,15 @@
 import React, { FC } from "react";
 import { cookies } from "next/headers";
 import { toast } from "sonner";
-// import { QRCodeSVG } from 'qr-code';
 import { QRGenerator } from "@/components/qr-code/QRGenerator";
 import {
   ArrowLeft,
   Edit,
   Share2,
   Download,
-  MapPin,
-  Calendar,
-  User,
-  Building,
-  Fish,
-  Truck,
-  ShieldCheck,
-  CheckCircle,
-  Clock,
   Eye,
-  EyeOff,
-  ExternalLink,
-  FileText,
-  Thermometer,
-  Star,
-  Package,
-  Factory,
-  Anchor,
-  Database,
-  Activity,
-  TrendingUp,
-  Globe,
-  AlertCircle,
-  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -44,7 +19,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import OverviewCards from "@/components/supply-chain/batch-creation/view/OverviewCards";
-import { Separator } from "@/components/ui/separator";
 import axios from "axios";
 import { SupplyChainRecord, StageHistory } from "@/lib/supply-chain-types";
 import Timeline from "@/components/supply-chain/batch-creation/view/Timeline";
