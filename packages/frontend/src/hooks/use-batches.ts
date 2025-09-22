@@ -6,15 +6,17 @@ import {
 } from "@/lib/supply-chain-types";
 
 interface UseBatchesOptions {
-  searchTerm: string;
-  statusFilter: string;
-  stageFilter: string;
+  searchTerm?: string;
+  statusFilter?: string;
+  stageFilter?: string;
+  // productId?: string;
 }
 
 export function useBatches({
   searchTerm,
   stageFilter,
   statusFilter,
+  // productId
 }: UseBatchesOptions) {
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ["batches", searchTerm, stageFilter, statusFilter],
@@ -38,6 +40,8 @@ export function useBatches({
 
         const matchesStatus =
           statusFilter === "all" || batch.status === statusFilter;
+
+        // const matchesProductId = productId === "all" || batch.productId === productId
 
         return matchesSearch && matchesStage && matchesStatus;
       });

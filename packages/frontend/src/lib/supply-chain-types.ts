@@ -1,3 +1,5 @@
+import { UserProfile, User } from "./types"
+
 export enum ProductType {
   FARMED = 'farmed',
   WILD_CAPTURE = 'wild-capture',
@@ -255,7 +257,7 @@ export interface SupplyChainRecord {
   blockchainHash: string;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
-  user: Record<string, unknown>; // replace with proper User type if available
+  user: User; // replace with proper User type if available
   stageHistory: StageHistory[];
   feedbackCount: number;
   averageRating: number;
@@ -339,5 +341,5 @@ export interface StageHistory {
   notes: string;
   fileHashes: string[];
   blockchainHash: string;
-  user: Record<string, unknown>;
+  user: User;
 }

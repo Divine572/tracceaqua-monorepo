@@ -140,7 +140,7 @@ const BatchOverviewTable: FC<BatchOverviewTableProps> = ({
                     href={`/dashboard/supply-chain/batches/${batch.id}`}
                     className="text-primary hover:underline"
                   >
-                    {batch.productId}
+                    {batch.id}
                   </Link>
                 </TableCell>
                 <TableCell>
@@ -182,7 +182,7 @@ const BatchOverviewTable: FC<BatchOverviewTableProps> = ({
                       </Button>
                     </Link>
                     <Link
-                      href={`/dashboard/supply-chain/batches/${batch.id}/qr`}
+                      href={`/dashboard/supply-chain/batches/${batch.productId}/qr`}
                     >
                       <Button size="sm" variant="outline">
                         <QrCode className="h-4 w-4" />

@@ -11,8 +11,6 @@ export async function POST(req: NextRequest) {
 
   const userToken = (await cookieStore).get("user-token")?.value;
 
-  console.log(process.env.BACKEND_URL_DEV)
-
   try {
     const response = await axios.post(
       `${process.env.BACKEND_URL_DEV}/supply-chain`,
@@ -31,54 +29,6 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ data: response.data });
-  } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      console.error("Axios error:", error.response?.data || error.message);
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status }
-      );
-    }
-
-    console.error("Unexpected error", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
-}
-
-
-// GET handler
-
-export async function GET(req: NextRequest) {
-  
-  const cookieStore = cookies();
-
-  const userToken = (await cookieStore).get("user-token")?.value;
-
-  const {searchParams} = new URL(req.url)
-  const productId = searchParams.get("productId")
-
-  try {
-    const response = await axios.get(
-      `${process.env.BACKEND_URL_DEV}/supply-chain`,
-      {
-        headers: {
-          Authorization: `Bearer ${userToken}`,
-        },
-        params: {
-          productId
-        }
-      }
-    );
-
-    if (response.status !== 200) {
-      console.log(response.data);
-      throw new Error();
-    }
-
-    return NextResponse.json({ success: true, data: response.data });
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       console.error("Axios error:", error.response?.data || error.message);
