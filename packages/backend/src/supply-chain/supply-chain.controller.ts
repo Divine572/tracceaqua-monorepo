@@ -30,6 +30,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
+import { Public } from '../common/decorators/public.decorator';
 
 import { SupplyChainService } from './supply-chain.service';
 // import { ConsumerFeedbackService } from './consumer-feedback.service';
@@ -156,6 +157,7 @@ export class SupplyChainController {
     // ===== PUBLIC TRACEABILITY =====
 
     @Get('public/trace/:productId')
+    @Public()
     @ApiOperation({
         summary: 'Trace product publicly',
         description: 'Get public traceability information for a product',
@@ -172,6 +174,7 @@ export class SupplyChainController {
     }
 
     @Post('public/qr/:productId')
+    @Public()
     @ApiOperation({
         summary: 'Generate QR code',
         description: 'Generate QR code for product traceability',
@@ -187,6 +190,7 @@ export class SupplyChainController {
     ): Promise<QRCodeResponseDto> {
         return this.qrCodeService.generateQRCode(productId, qrDto);
     }
+
 
     // ===== CONSUMER FEEDBACK =====
 
