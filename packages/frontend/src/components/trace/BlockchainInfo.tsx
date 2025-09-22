@@ -1,12 +1,4 @@
 import {
-  CheckCircle,
-  Leaf,
-  Fish,
-  Factory,
-  Building,
-  Truck,
-  Store,
-  Award,
   AlertCircle,
   Shield
 } from "lucide-react";
@@ -14,7 +6,6 @@ import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 
 import { formatFullDate } from "@/helper/formatter";
-import { formatDate } from "@/helper/formatter";
 import { TraceData } from "@/lib/trace";
 
 const getStatusColor = (status: string) => {
